@@ -46,7 +46,7 @@ def train_eval(MODEL, env, ckpt, buffer, writer, idx):
         print("LOADED", ckpt)
 
 
-    model.learn(total_timesteps=2500, tb_log_name = name)
+    model.learn(total_timesteps=7500, tb_log_name = name)
 
     al = model.last_log["train/actor_loss"]
     cl = model.last_log["train/critic_loss"]

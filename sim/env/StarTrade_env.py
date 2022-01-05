@@ -356,8 +356,8 @@ class StarTradingEnv(gym.Env):
         self.timeline = np.append (self.timeline, self.day)
 
 
-        # self.reward = self.cal_reward(total_asset_starting, total_asset_ending, cur_buy_stat)
-        self.reward = self.cal_opt_reward (pre_date, step_profit, pre_unrealized_pnl, pre_price, self.buy_price)
+        self.reward = self.cal_reward(total_asset_starting, total_asset_ending, cur_buy_stat)
+        # self.reward = self.cal_opt_reward (pre_date, step_profit, pre_unrealized_pnl, pre_price, self.buy_price)
         # self.reward = self.cal_simple_reward(total_asset_starting, total_asset_ending)
 
 

@@ -44,6 +44,7 @@ def train_eval(MODEL, env, ckpt, buffer, writer, idx):
         model = MODEL.load(ckpt, env = env)
         if buffer: model.replay_buffer = buffer
         print("LOADED", ckpt)
+        print(model.policy)
 
 
     model.learn(total_timesteps=7500, tb_log_name = name)
@@ -90,8 +91,8 @@ def compair_run(iter):
     sum_sac = tensorboard("./summary_all/SAC/")
     sum_ddpg = tensorboard("./summary_all/DDPG/")
 
-    ckpt_ddpg = None
-    ckpt_sac = None
+    ckpt_ddpg = "ckpt_DDPG"
+    ckpt_sac = "dkpt_SAC"
     buffer_ddpg = None
     buffer_sac = None
     for idx in range(iter):

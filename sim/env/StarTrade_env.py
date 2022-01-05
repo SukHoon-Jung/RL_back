@@ -295,7 +295,9 @@ class StarTradingEnv(gym.Env):
 
         risk_log = -1 * total_neg/ np.sum(self.total_pos)
         self.render()
-        return self.state, self.reward, self.done, {'profit': self.total_asset[-1], 'risk':risk_log, 'neg': total_neg}
+        return self.state, self.reward, self.done, {'profit': self.total_asset[-1],
+                                                    'risk':risk_log, 'neg': total_neg,
+                                                    'cnt':self.down_cnt+self.up_cnt}
 
     def clear_all(self):
         self._trade(0)
@@ -363,7 +365,7 @@ class StarTradingEnv(gym.Env):
         # self.reward = self.cal_simple_reward(total_asset_starting, total_asset_ending)
 
         optimal = self.cal_opt_reward(pre_date, step_profit, pre_unrealized_pnl, pre_price, self.buy_price)
-        self.reward += (optimal/10)
+        self.reward += (max(optimal,-2)/2)
 
         self.reward_log = np.append (self.reward_log, self.reward)
         return self.state, self.reward, self.done, {}

@@ -29,7 +29,7 @@ def evaluation(model, env):
     info=info[0]
     env.training=True
     env.norm_reward=True
-    return  sum(rewards), info['profit'], info['risk'], info['neg']
+    return  sum(rewards), info['profit'], info['risk'], info['neg'], info['cnt']
 
 
 
@@ -62,7 +62,7 @@ def train_eval(MODEL, env, ckpt, buffer, writer, idx):
     t_rw = model.last_log["rollout/ep_rew_mean"]
     fps = model.last_log["time/fps"]
 
-    rwd, prf, risk, neg = evaluation(model, env)
+    rwd, prf, risk, neg, cnt = evaluation(model, env)
     ckpt = "ckpt_"+name
     model.save(ckpt)
     buffer = model.replay_buffer
@@ -74,6 +74,8 @@ def train_eval(MODEL, env, ckpt, buffer, writer, idx):
     writer.add_scalar("1/3profit", prf, idx)
     writer.add_scalar("1/2risk", risk, idx)
     writer.add_scalar("1/4neg", neg, idx)
+    writer.add_scalar("1/5count", cnt, idx)
+
     writer.add_scalar("2/actor_loss", al, idx)
     writer.add_scalar("2/critic_loss", cl, idx)
     writer.add_scalar("2/t_reward", t_rw, idx)

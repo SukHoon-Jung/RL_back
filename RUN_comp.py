@@ -8,20 +8,25 @@ from torch.utils.tensorboard import SummaryWriter
 
 from stable_baselines3 import DDPG, SAC
 from stable_baselines3.common.noise import NormalActionNoise
+from stable_baselines3.common.vec_env import VecNormalize, DummyVecEnv
 
 env_name ='StarTrader-v0'
 
 
 
 def evaluation(model, env):
+    env.training=False
     obs = env.reset()
     done = False
     rewards=[]
     while not done:
         action, _states = model.predict(obs)
         obs, reward, done, info = env.step(action)
-        rewards.append(reward)
+        done = done[0]
+        rewards.append(reward[0])
 
+    info=info[0]
+    env.training=True
     return  sum(rewards), info['profit'], info['risk'], info['neg']
 
 
@@ -84,8 +89,10 @@ def tensorboard(dir):
 def compair_run(iter):
     sac = "SAC"
     ddpg = "DDPG"
-    sac_env = gym.make(env_name, title=sac, plot_dir="./LOG_{}/figs".format(sac))
-    dd_env = gym.make(env_name, title=ddpg, plot_dir="./LOG_{}/figs".format(ddpg))
+    sac_env = DummyVecEnv([lambda :gym.make(env_name, title=sac, plot_dir="./LOG_{}/figs".format(sac))])
+    dd_env = DummyVecEnv([lambda :gym.make(env_name, title=ddpg, plot_dir="./LOG_{}/figs".format(ddpg))])
+    sac_env = VecNormalize(sac_env, norm_obs=True, norm_reward=True, clip_obs=10.)
+    dd_env = VecNormalize (dd_env, norm_obs=True, norm_reward=True, clip_obs=10.)
 
     print(DDPG.__name__)
     sum_sac = tensorboard("./summary_all/SAC/")

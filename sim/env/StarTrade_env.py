@@ -357,9 +357,13 @@ class StarTradingEnv(gym.Env):
 
 
         self.reward = self.cal_reward(total_asset_starting, total_asset_ending, cur_buy_stat)
+
+
         # self.reward = self.cal_opt_reward (pre_date, step_profit, pre_unrealized_pnl, pre_price, self.buy_price)
         # self.reward = self.cal_simple_reward(total_asset_starting, total_asset_ending)
 
+        optimal = self.cal_opt_reward(pre_date, step_profit, pre_unrealized_pnl, pre_price, self.buy_price)
+        self.reward += (optimal/10)
 
         self.reward_log = np.append (self.reward_log, self.reward)
         return self.state, self.reward, self.done, {}
@@ -383,16 +387,11 @@ class StarTradingEnv(gym.Env):
 
             optimal = max(profit_sum, optimal)
 
-
-
         return optimal - base_unreal
 
     def cal_opt_reward (self, pre_date, profit, pre_unreal, pre_price, next_price):
         opt = self.get_optimal(pre_date, self.position_log[-2],pre_unreal, pre_price, next_price)
-        reward = (profit - opt)  + 1
-        # if (profit-0.001 > opt):
-            # print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        # print(profit, "    ", opt, " >>>>", reward)
+        reward = (profit - opt)
         return reward
 
     def cal_simple_reward(self, total_asset_starting, total_asset_ending):

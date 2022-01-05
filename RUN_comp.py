@@ -16,6 +16,7 @@ env_name ='StarTrader-v0'
 
 def evaluation(model, env):
     env.training=False
+    env.norm_reward =False
     obs = env.reset()
     done = False
     rewards=[]
@@ -27,6 +28,7 @@ def evaluation(model, env):
 
     info=info[0]
     env.training=True
+    env.norm_reward=True
     return  sum(rewards), info['profit'], info['risk'], info['neg']
 
 
@@ -38,7 +40,7 @@ def train_eval(MODEL, env, ckpt, buffer, writer, idx):
         model = MODEL.load(ckpt, env = env)
         if buffer: model.replay_buffer = buffer
         print("LOADED", ckpt)
-        print(model.policy)
+
     except:
         policy_kwargs = [128, 64]
         policy_kwargs = dict(net_arch=policy_kwargs)
@@ -49,6 +51,7 @@ def train_eval(MODEL, env, ckpt, buffer, writer, idx):
         tensorboard_log = "./summary/"
         model = MODEL("MlpPolicy", env, verbose=1, action_noise=noise, gradient_steps=2,
                       policy_kwargs=policy_kwargs, tensorboard_log=tensorboard_log)
+        print(model.policy)
 
 
 

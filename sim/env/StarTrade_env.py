@@ -365,7 +365,7 @@ class StarTradingEnv(gym.Env):
         return self.state, self.reward, self.done, {}
 
     def remain_risk(self, action_power):
-        return 0.01 * (pow(action_power + 1, 3) -1)
+        return 0.01 * (pow(action_power + 1, 2) -1)
 
     def get_optimal(self, base_date, base_share, base_unreal, base_price, next_price):
         check_trade = [-MAX_TRADE, 0, MAX_TRADE]
@@ -409,10 +409,10 @@ class StarTradingEnv(gym.Env):
         profit = (profit - risk)
 
         if profit<0:
-            profit = min(profit, -1 * pow(abs(profit), 2))
+            profit = min(profit, -1 * pow(abs(profit), 1.5))
         else:
             profit = max(profit, pow(profit, 1.2))
-        return profit+0.4
+        return profit
 
         return reward
 

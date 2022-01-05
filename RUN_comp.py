@@ -29,22 +29,22 @@ def evaluation(model, env):
 def train_eval(MODEL, env, ckpt, buffer, writer, idx):
     name = MODEL.__name__
     env.reset()
-    if not ckpt:
-        policy_kwargs = [256, 256]
+    try:
+        model = MODEL.load(ckpt, env = env)
+        if buffer: model.replay_buffer = buffer
+        print("LOADED", ckpt)
+        print(model.policy)
+    except:
+        policy_kwargs = [128, 64]
         policy_kwargs = dict(net_arch=policy_kwargs)
         noise_std = 0.3
         noise = NormalActionNoise(
             mean=np.zeros(1), sigma=noise_std * np.ones(1)
         )
-        tensorboard_log="./summary/"
-        model = MODEL("MlpPolicy", env, verbose=1, action_noise=noise,
-                     policy_kwargs=policy_kwargs, tensorboard_log=tensorboard_log)
+        tensorboard_log = "./summary/"
+        model = MODEL("MlpPolicy", env, verbose=1, action_noise=noise, gradient_steps=2,
+                      policy_kwargs=policy_kwargs, tensorboard_log=tensorboard_log)
 
-    if ckpt:
-        model = MODEL.load(ckpt, env = env)
-        if buffer: model.replay_buffer = buffer
-        print("LOADED", ckpt)
-        print(model.policy)
 
 
     model.learn(total_timesteps=7500, tb_log_name = name)

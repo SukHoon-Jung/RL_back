@@ -458,9 +458,11 @@ class Logger(object):
             if isinstance(_format, KVWriter):
                 _format.write(self.name_to_value, self.name_to_excluded, step)
 
+        last_dump = self.name_to_value.copy()
         self.name_to_value.clear()
         self.name_to_count.clear()
         self.name_to_excluded.clear()
+        return last_dump
 
     def log(self, *args, level: int = INFO) -> None:
         """

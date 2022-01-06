@@ -13,23 +13,27 @@ env_name = 'Stacked-v0'
 entry = 'sim.env:StackedEnv'
 
 class TimeRecode:
-    def __init__(self, writer, interval=10):
-        self.start = time.time()
-        self.tick = 1
-        self.time_interval = interval
+    def __init__(self, writer, interval=2):
+        self.total_sec=0
+        self.tick = 0
         self.writer = writer
+        self.interval=interval
+
+    def start(self):
+        self.start_tm = time.time()
+
     def recode(self, dict):
         if dict is None: return False
+        self.total_sec += int(time.time()-self.start_tm)
+        now = (self.total_sec/60) / self.interval
 
-        now = int((time.time()-self.start)/60) / self.time_interval
-        if now >= self.tick :
+        if now >= self.tick:
             for key, val in dict.items():
-                self.writer.add_scalar("TvIME" + "/" + key, val, now * self.time_interval)
-
+                self.writer.add_scalar("TvIME" + "/" + key, val, now * self.interval)
             self.tick = now + 1
-            return True
 
-        return False
+        return True
+
 
 
 
@@ -106,10 +110,8 @@ class IterRun:
         return model
 
     def train_eval(self, steps =None):
+        self.time_recoder.start()
         if steps is None: steps = self.unit*3
-
-
-
         try:
             model = self.model_cls.load(self.save, env=self.env)
             if self.buffer: model.replay_buffer = self.buffer
@@ -121,7 +123,6 @@ class IterRun:
 
         model.learn(total_timesteps=steps, tb_log_name=self.name)
         self.buffer = model.replay_buffer
-
 
         model.save(self.save)
 

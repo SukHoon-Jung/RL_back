@@ -448,7 +448,7 @@ class Logger(object):
         self.name_to_count[key] = count + 1
         self.name_to_excluded[key] = exclude
 
-    def dump(self, step: int = 0) -> None:
+    def dump(self, step: int = 0):
         """
         Write all of the diagnostics from the current iteration
         """

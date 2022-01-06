@@ -72,7 +72,7 @@ class EpisodePlot:
         self.asset = []
         self.risk = []
         plt.ion ()
-        self.fig = plt.figure (figsize=(8, 5), constrained_layout=True)
+        self.fig = plt.figure (figsize=(7, 5), constrained_layout=True)
         self.fig.canvas.set_window_title(title)
         self.init_fig ()
 

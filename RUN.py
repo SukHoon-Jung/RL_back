@@ -20,7 +20,6 @@ def make_env(env_id, nproc=2):
 env_name ='StarTrader-v0'
 def run(model_name):
 
-
     env = gym.make(env_name, title=model_name, plot_dir="./LOG_{}/figs".format(model_name))
     # env = make_env(env_name)
     # env= make_vec_env(model_name, n_envs=2, seed=0, vec_env_cls=SubprocVecEnv)
@@ -34,7 +33,7 @@ def run(model_name):
     tensorboard_log="./summary/"
 
     if model_name =="DDPG":
-        model = DDPG("MlpPolicy", env, verbose=1, action_noise=noise ,
+        model = DDPG("MlpPolicy", env, verbose=1, action_noise=noise ,gradient_steps=2,
                      policy_kwargs = policy_kwargs, tensorboard_log=tensorboard_log)
     else:
         model = SAC("MlpPolicy", env, verbose=1, action_noise=noise ,

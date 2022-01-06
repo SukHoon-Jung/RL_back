@@ -297,7 +297,7 @@ class StackedEnv(gym.Env):
     def step_done(self, actions):
         self.step_normal(0) #clear_all
 
-        print ("@@@@@@@@@@@@@@@@@")
+        print ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
         print ("Iteration", self.iteration - 1)
 
         total_neg = np.sum(self.total_neg)

@@ -10,9 +10,6 @@ from stable_baselines3 import DDPG, SAC
 from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.vec_env import VecNormalize, DummyVecEnv
 
-env_name ='StarTrader-v0'
-
-
 
 def evaluation(model, env):
     env.training=False
@@ -42,7 +39,7 @@ def train_eval(MODEL, env, ckpt, buffer, writer, idx):
         print("LOADED", ckpt)
 
     except:
-        policy_kwargs = [128, 64]
+        policy_kwargs = [256, 128, 32]
         policy_kwargs = dict(net_arch=policy_kwargs)
         noise_std = 0.3
         noise = NormalActionNoise(
@@ -111,12 +108,16 @@ def compair_run(iter):
         al, cl, rwd, profit, ckpt_ddpg, buffer_ddpg = train_eval(DDPG, dd_env, ckpt_ddpg, buffer_ddpg, sum_ddpg, idx)
         al, cl, rwd, profit, ckpt_sac, buffer_sac = train_eval(SAC, sac_env, ckpt_sac, buffer_sac, sum_sac, idx)
 
+# env_name ='StarTrader-v0'
+# entry = 'sim.env:StarTradingEnv'
+env_name ='Stacked-v0'
+entry = 'sim.env:StackedEnv'
 
 
 if __name__ == '__main__':
     register(
         id=env_name,
-        entry_point='sim.env:StarTradingEnv',
+        entry_point=entry,
     )
 
     compair_run(1000)

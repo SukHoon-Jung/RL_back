@@ -64,8 +64,7 @@ class IterRun:
         suit_model =None
         for iter in range(1,3):
             model = self._create(init=True, env=env)
-            model.gradient_steps = iter * self.gradient_steps
-            model.learn(total_timesteps= self.boost_step + self.unit)
+            model.learn(total_timesteps= self.boost_step + iter*self.unit)
             eval = self.evaluation(model, env)
             profit = eval["1_Reward"]
             print(" - - - - - BOOST PROFIT:   ",profit)
@@ -75,7 +74,6 @@ class IterRun:
             if profit > min_profit: break
 
         self.buffer = suit_model.replay_buffer
-        suit_model.gradient_steps= self.gradient_steps
         suit_model.learning_starts = 0
         suit_model.save(self.save)
         self.boosted = True

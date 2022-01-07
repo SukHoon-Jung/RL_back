@@ -30,53 +30,7 @@ CONTEXT_DATA_N = dp.CONTEXT_DATA_N
 
 NUMBER_OF_STOCKS = len(DJI)
 
-# # Pools of stocks to trade
-# DJI = ['MMM', 'AXP', 'AAPL', 'BA', 'CAT', 'CVX', 'CSCO', 'KO', 'DIS', 'XOM', 'GE', 'GS', 'HD', 'IBM', 'INTC', 'JNJ',
-#        'JPM', 'MCD', 'MRK', 'MSFT', 'NKE', 'PFE', 'PG', 'UTX', 'UNH', 'VZ', 'WMT']
-#
-# DJI_N = ['3M','American Express', 'Apple','Boeing','Caterpillar','Chevron','Cisco Systems','Coca-Cola','Disney'
-#          ,'ExxonMobil','General Electric','Goldman Sachs','Home Depot','IBM','Intel','Johnson & Johnson',
-#          'JPMorgan Chase','McDonalds','Merck','Microsoft','NIKE','Pfizer','Procter & Gamble',
-#          'United Technologies','UnitedHealth Group','Verizon Communications','Wal Mart']
-#
-# #Market and macroeconomic data to be used as context data
-# CONTEXT_DATA = ['^GSPC', '^DJI', '^IXIC', '^RUT', 'SPY', 'QQQ', '^VIX', 'GLD', '^TYX', '^TNX' , 'SHY', 'SHV']
 
-
-
-
-# # # DJIA component stocks
-# DJI = ['MMM', 'AXP', 'AAPL', 'BA', 'CAT', 'CVX', 'CSCO', 'KO', 'DIS', 'XOM', 'GE', 'GS',
-#           'HD', 'IBM', 'INTC', 'JNJ', 'JPM', 'MCD', 'MRK', 'MSFT', 'NKE', 'PFE', 'PG', 'UTX',
-#           'UNH', 'VZ', 'WMT']
-# DJI_N = ['3M','American Express', 'Apple','Boeing','Caterpillar','Chevron','Cisco Systems','Coca-Cola','Disney'
-#          ,'ExxonMobil','General Electric','Goldman Sachs','Home Depot','IBM','Intel','Johnson & Johnson',
-#          'JPMorgan Chase','McDonalds','Merck','Microsoft','NIKE','Pfizer','Procter & Gamble',
-#          'United Technologies','UnitedHealth Group','Verizon Communications','Wal Mart']
-#
-# CONTEXT_DATA = ['^GSPC', '^DJI', '^IXIC', '^RUT', 'SPY', 'QQQ', '^VIX', 'GLD', '^TYX', '^TNX' , 'SHY', 'SHV']
-#
-# CONTEXT_DATA_N = ['S&P 500', 'Dow Jones Industrial Average', 'NASDAQ Composite', 'Russell 2000', 'SPDR S&P 500 ETF',
-#  'Invesco QQQ Trust', 'CBOE Volatility Index', 'SPDR Gold Shares', 'Treasury Yield 30 Years',
-#  'CBOE Interest Rate 10 Year T Note', 'iShares 1-3 Year Treasury Bond ETF', 'iShares Short Treasury Bond ETF']
-
-
-
-
-# # DJIA component stocks
-
-
-
-
-# ------------------------------ PREPROCESSING ---------------------------------
-print ("\n")
-print ("############################## Welcome to the playground of Star Trader!!   ###################################")
-print ("\n")
-print ("Hello, I am Star, I am learning to trade like a human. In this playground, I trade stocks and optimize my portfolio.")
-print ("\n")
-
-print ("Starting to pre-process data for trading environment construction ... ")
-# Data Preprocessing
 
 
 PRICE_FILE = './data/ddpg_WORLD.csv'
@@ -87,7 +41,6 @@ try:
     input_states = pd.read_csv(INPUT_FILE, index_col='Date', parse_dates=True)
     WORLD =  pd.read_csv(PRICE_FILE, index_col='Date', parse_dates=True)
     print("LOAD PRE_PROCESSED DATA")
-    print(WORLD.head(10))
 except :
     print ("LOAD FAIL.  PRE_PROCESSing DATA")
     dataset = dp.DataRetrieval()
@@ -110,11 +63,6 @@ data_length = len(input_states)
 COMMITION = 0.2
 SLIPPAGE = 1#1  # 상방 하방
 COST = SLIPPAGE+COMMITION
-
-
-print("Pre-processing and stock selection complete, trading starts now ...")
-print("_______________________________________________________________________________________________________________")
-
 
 # ------------------------------ CLASSES ---------------------------------
 obs_range=(-5., 5.)
@@ -159,7 +107,6 @@ class StackedEnv(gym.Env):
         self.position = 0
         self.position_log = [self.position ]
 
-
         unrealized_pnl = 0.0
         self.unrealized_asset = [unrealized_pnl]
 
@@ -171,21 +118,17 @@ class StackedEnv(gym.Env):
         pre_data = self.data.values.tolist()
         self.day, self.data = self.skip_day (input_states, True)
 
-
         self.timeline = [self.day]
         self.state = self.acc_balance + [unrealized_pnl] + self.data.values.tolist() + pre_data + [self.day_diff(pre_day, self.day)] +[0]
 
         self.iteration += 1
         self.reward = 0
 
-
         return self.state
 
     def day_diff(self, pre, now):
         diff = now - pre
         return diff.days
-
-
 
 
     def skip_day(self, input_st, first=False):

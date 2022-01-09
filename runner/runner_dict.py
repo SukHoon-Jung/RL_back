@@ -6,9 +6,8 @@ import gym
 from torch.utils.tensorboard import SummaryWriter
 
 from runner.callbacks import LearnEndCallback
-from sim.env import StackedEnv
+from sim.env.Dict_env import DictEnv
 from sim.env.Dict_envtest import DictEnvTest
-from sim.env.Dict_envtest2 import DictEnvTest2
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, SubprocVecEnv
@@ -41,7 +40,7 @@ class TimeRecode:
 
 
 
-ENV =DictEnvTest
+ENV = DictEnvTest
 class IterRun:
 
     unit = 2050
@@ -49,12 +48,12 @@ class IterRun:
     boosted = False
 
     gradient_steps = 2
-    def __init__(self, MODEL, env_name ='Stacked-v0', arc=[256, 128, 32], nproc=1, init_boost=False, retrain=False, batch_size=128):
-        self.env_name = env_name
+    def __init__(self, MODEL, arc=[256, 128, 32], nproc=2, init_boost=False, retrain=False, batch_size=128):
+
         self.model_cls = MODEL
         self.name = MODEL.__name__
         self.test_env = DummyVecEnv([lambda: ENV(title=self.name, plot_dir="./sFig/{}".format(self.name))])
-        self.env = self.make_env(nproc)
+        self.env = self.make_env()
         self.writer = self.tensorboard("./summary_all/{}/".format(self.name))
         self.save = f"ckpt_{self.name}"
         self.buffer = None
@@ -74,15 +73,9 @@ class IterRun:
                 model.save(self.save)
                 del model
 
-    def make_env(self, nproc=1):
-        if nproc <2:
-            env =  DummyVecEnv([lambda: ENV()])
-        else:
-            env = make_vec_env (self.env_name, n_envs=nproc, vec_env_cls=SubprocVecEnv)
-        return VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.)
-
-
-
+    def make_env(self):
+        env =  DummyVecEnv([lambda: ENV()])
+        return VecNormalize(env, norm_obs_keys=["obs"], norm_obs=True, norm_reward=True, clip_obs=10.)
 
     def init_boost(self, min_profit=-500):
         print("-----  BOOST UP", self.name)
@@ -125,12 +118,8 @@ class IterRun:
             mean=np.zeros(1), sigma=noise_std * np.ones(1)
         )
         if env is None:env = self.env
-        # model = self.model_cls("MlpPolicy", env, verbose=1, action_noise=noise,  #MultiInputPolicy
-        #                        gradient_steps= self.gradient_steps *self.nproc,
-        #                        batch_size = self.batch_size, policy_kwargs=policy_kwargs,
-        #                        learning_starts=learning_starts)
-        model = self.model_cls("MultiInputPolicy", env, verbose=1, action_noise=noise,  #MultiInputPolicy
-                               gradient_steps= self.gradient_steps *self.nproc,
+        model = self.model_cls("MultiInputPolicy", env, verbose=1, action_noise=noise,
+                               gradient_steps= self.gradient_steps,
                                batch_size = self.batch_size, policy_kwargs=policy_kwargs,
                                learning_starts=learning_starts)
         return model
@@ -144,8 +133,8 @@ class IterRun:
         model = self.model_cls.load(self.save, env=self.env)
         if self.buffer: model.replay_buffer = self.buffer
 
-        print("LOADED", self.save, self.iter)
-        print("BUFFER REUSE:", model.replay_buffer.size() * self.nproc)
+        # print("LOADED", self.save, self.iter)
+        # print("BUFFER REUSE:", model.replay_buffer.size() * self.nproc)
 
         start_tm = time.time()
         start_n = model._n_updates
@@ -153,7 +142,6 @@ class IterRun:
         CB = LearnEndCallback()
         model.learn(total_timesteps=steps, tb_log_name=self.name, callback=CB)
         self.buffer = model.replay_buffer
-        print(type(self.buffer))
 
         print("===========   EVAL   =======   ", self.name, self.iter, ",FPS: ", CB.fps)
 
@@ -181,14 +169,9 @@ class IterRun:
         obs = env.reset()
         obs = train_evn.normalize_obs(obs)
 
-        # print(train_evn.obs_rms.mean)
-        # print(train_evn.obs_rms.var)
-        # print(obs)
-
-        # print(train_evn.obs_rms['obs'].mean)
-        # print(train_evn.obs_rms['obs'].var)
-        # print(obs)
-
+        print(train_evn.obs_rms['obs'].mean)
+        print(train_evn.obs_rms['obs'].var)
+        print(obs)
         done = False
         rewards = []
         while not done:

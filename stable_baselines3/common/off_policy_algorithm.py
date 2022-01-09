@@ -98,7 +98,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
         support_multi_env: bool = False,
         create_eval_env: bool = False,
         monitor_wrapper: bool = True,
-        seed: Optional[int] = None,
+        seed: Optional[int] = 1,
         use_sde: bool = False,
         sde_sample_freq: int = -1,
         use_sde_at_warmup: bool = False,

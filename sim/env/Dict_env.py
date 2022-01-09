@@ -1,4 +1,6 @@
 # --------------------------- IMPORT LIBRARIES -------------------------
+from collections import OrderedDict
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -66,7 +68,9 @@ COST = SLIPPAGE+COMMITION
 
 # ------------------------------ CLASSES ---------------------------------
 obs_range=(-5., 5.)
-class StackedEnv(gym.Env):
+STAT = "stat"
+OBS ="obs"
+class DictEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self, day = START_TRAIN, title="Star", plot_dir=None):
@@ -81,12 +85,11 @@ class StackedEnv(gym.Env):
         # defined using Gym's Box action space function
         self.action_space = spaces.Box(low = -1.0, high = 1.0,shape = (NUMBER_OF_STOCKS,),dtype=np.float16)
 
-        # [account balance]+[unrealized profit/loss] +[number of features, 36]+[portfolio stock of 5 stocks holdings]
-        self.full_feature_length = 2 + feature_length*2 +1
-        self.share_idx = self.full_feature_length
-        print("full length", self.full_feature_length)
+        # obs = spaces.Box(low = -np.inf, high = np.inf,shape = (2,feature_length),dtype=np.float16)
+        obs = spaces.Box(low=-np.inf, high=np.inf, shape=(2*feature_length,), dtype=np.float16)
+        stat = spaces.Box(low = -np.inf, high = np.inf,shape = (3+NUMBER_OF_STOCKS,),dtype=np.float16)
+        self.observation_space = spaces.Dict({OBS: obs,STAT:stat})
 
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape = (self.full_feature_length + NUMBER_OF_STOCKS,))
         self.reset()
     def reset(self):
         """
@@ -119,11 +122,15 @@ class StackedEnv(gym.Env):
         self.day, self.data = self.skip_day (input_states, True)
 
         self.timeline = [self.day]
-        self.state = self.acc_balance + [unrealized_pnl] + self.data.values.tolist() + pre_data + [self.day_diff(pre_day, self.day)] +[0]
+
 
         self.iteration += 1
         self.reward = 0
 
+        # obs = [self.data.values.tolist(), pre_data ]
+        obs = self.data.values.tolist()+ pre_data
+        stat = self.acc_balance + [unrealized_pnl] + [self.day_diff(pre_day, self.day)] + [0]
+        self.state = OrderedDict([(OBS, obs), (STAT, stat)])
         return self.state
 
     def day_diff(self, pre, now):
@@ -201,9 +208,7 @@ class StackedEnv(gym.Env):
         return cleaned, realized, cost, left_buy, buy_price
 
 
-    def _trade(self, action):
-
-        cur_share = self.state[self.share_idx]
+    def _trade(self, cur_share, action):
         new_share = self.get_trade_num(action ,MAX_TRADE)
 
         cleaned, profit, cost, _, buy_price = self.__trade(self.buy_price, cur_share, new_share)
@@ -220,10 +225,8 @@ class StackedEnv(gym.Env):
             pass
 
         self.buy_price = buy_price
-        self.state[0] += profit - cost
 
-        self.state[self.share_idx] = new_share
-        return new_share
+        return new_share, (profit - cost)
 
     def log_trade (self):
         trading_book = pd.DataFrame (index=self.timeline, columns=["Cash balance", "Unrealized value", "Total asset", "Rewards", "CumReward", "Position"])
@@ -238,7 +241,7 @@ class StackedEnv(gym.Env):
         trading_book.to_csv ('./train_result/trading_book_train_{}.csv'.format (self.iteration - 1))
 
     def step_done(self, actions):
-        self.step_normal(0) #clear_all
+        self.step_normal(0)
 
         print ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
         print ("Iteration", self.iteration - 1)
@@ -253,8 +256,7 @@ class StackedEnv(gym.Env):
                                                     'risk':risk_log, 'neg': total_neg,
                                                     'cnt':self.down_cnt+self.up_cnt}
 
-    def clear_all(self):
-        self._trade(0)
+
 
     def step(self, actions):
         self.pre_day = self.day
@@ -279,27 +281,29 @@ class StackedEnv(gym.Env):
         pre_price = self.buy_price
 
         # Total asset is account balance + unrealized_pnl
-        pre_unrealized_pnl = self.state[1]
-        total_asset_starting = self.state[0] + pre_unrealized_pnl
+        balance = self.state[STAT][0]
+        pre_unrealized_pnl =self.state[STAT][1]
 
-        try:
-            position = self._trade (action)
-        except Exception as e:
-            print(action)
-            print (self.state)
-            raise e
+        total_asset_starting = balance + pre_unrealized_pnl
+        cur_stat = self.state[STAT][-1]
 
-        self.position_log = np.append (self.position_log, position)
+        new_stat, gain = self._trade (cur_stat, action)
+        new_bal =balance + gain
+
+        self.position_log = np.append (self.position_log, new_stat)
         #NEXT DAY
         pre_day = self.day
         pre_data = self.data.values.tolist()
         self.day, self.data = self.skip_day (input_states)
 
-        cur_buy_stat = self.state[self.share_idx]
-        unrealized_pnl = self._unrealized_profit(cur_buy_stat, self.buy_price)
+        unrealized_pnl = self._unrealized_profit(new_stat, self.buy_price)
 
-        self.state = [self.state[0]] + [unrealized_pnl] + self.data.values.tolist () + pre_data + [self.day_diff(pre_day, self.day)] + [cur_buy_stat]
-        total_asset_ending = self.state[0] + unrealized_pnl
+        # obs = [self.data.values.tolist(), pre_data]
+        obs = self.data.values.tolist() + pre_data
+        stat = [new_bal] + [unrealized_pnl] + [self.day_diff(pre_day, self.day)] + [new_stat]
+        self.state = OrderedDict([(OBS, obs), (STAT, stat)])
+
+        total_asset_ending = new_bal + unrealized_pnl
         step_profit = total_asset_ending - total_asset_starting
 
         # print(step_profit, unrealized_pnl)
@@ -309,14 +313,14 @@ class StackedEnv(gym.Env):
         else: self.total_pos = np.append(self.total_pos, step_profit)
 
         self.unit_log = np.append(self.unit_log, step_profit)
-        self.acc_balance = np.append (self.acc_balance, self.state[0])
+        self.acc_balance = np.append (self.acc_balance, new_bal)
         self.unrealized_asset = np.append (self.unrealized_asset, unrealized_pnl)
 
         self.total_asset = np.append (self.total_asset, total_asset_ending)
         self.timeline = np.append (self.timeline, self.day)
 
 
-        self.reward = self.cal_reward(total_asset_starting, total_asset_ending, cur_buy_stat)
+        self.reward = self.cal_reward(total_asset_starting, total_asset_ending, cur_stat)
 
 
         # self.reward = self.cal_opt_reward (pre_date, step_profit, pre_unrealized_pnl, pre_price, self.buy_price)

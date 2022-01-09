@@ -9,8 +9,8 @@ from stable_baselines3 import DDPG, SAC,TD3
 
 
 
-def compair_run(iter, env_name):
-    targets =[IterRun(TD3, env_name)]
+def compair_run(iter):
+    targets =[IterRun(SAC), IterRun(DDPG), IterRun(TD3)]
 
 
     print("======================================")
@@ -36,5 +36,5 @@ if __name__ == '__main__':
     #     entry_point=entryee,
     # )
 
-    compair_run(1000, env_name)
+    compair_run(1000)
 

@@ -32,20 +32,7 @@ class BaseFeaturesExtractor(nn.Module):
         raise NotImplementedError()
 
 
-class FlattenExtractor(BaseFeaturesExtractor):
-    """
-    Feature extract that flatten the input.
-    Used as a placeholder when feature extraction is not needed.
 
-    :param observation_space:
-    """
-
-    def __init__(self, observation_space: gym.Space):
-        super(FlattenExtractor, self).__init__(observation_space, get_flattened_obs_dim(observation_space))
-        self.flatten = nn.Flatten()
-
-    def forward(self, observations: th.Tensor) -> th.Tensor:
-        return self.flatten(observations)
 
 
 class NatureCNN(BaseFeaturesExtractor):
@@ -234,6 +221,21 @@ class MlpExtractor(nn.Module):
         return self.value_net(self.shared_net(features))
 
 
+class FlattenExtractor(BaseFeaturesExtractor):
+    """
+    Feature extract that flatten the input.
+    Used as a placeholder when feature extraction is not needed.
+
+    :param observation_space:
+    """
+
+    def __init__(self, observation_space: gym.Space):
+        super(FlattenExtractor, self).__init__(observation_space, get_flattened_obs_dim(observation_space))
+        self.flatten = nn.Flatten()
+
+    def forward(self, observations: th.Tensor) -> th.Tensor:
+        return self.flatten(observations)
+
 class CombinedExtractor(BaseFeaturesExtractor):
     """
     Combined feature extractor for Dict observation spaces.
@@ -289,6 +291,8 @@ def get_actor_critic_arch(net_arch: Union[List[int], Dict[str, List[int]]]) -> T
        If the number of ints is zero, the network will be linear.
     2. If it is a dict,  it should have the following structure:
        ``dict(qf=[<critic network architecture>], pi=[<actor network architecture>])``.
+
+
        where the network architecture is a list as described in 1.
 
     For example, to have actor and critic that share the same network architecture,

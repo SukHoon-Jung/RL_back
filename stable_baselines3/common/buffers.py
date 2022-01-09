@@ -302,6 +302,7 @@ class ReplayBuffer(BaseBuffer):
             (self.dones[batch_inds, env_indices] * (1 - self.timeouts[batch_inds, env_indices])).reshape(-1, 1),
             self._normalize_reward(self.rewards[batch_inds, env_indices].reshape(-1, 1), env),
         )
+
         return ReplayBufferSamples(*tuple(map(self.to_torch, data)))
 
 
@@ -520,6 +521,7 @@ class DictReplayBuffer(ReplayBuffer):
             key: np.zeros((self.buffer_size, self.n_envs) + _obs_shape, dtype=observation_space[key].dtype)
             for key, _obs_shape in self.obs_shape.items()
         }
+
         self.next_observations = {
             key: np.zeros((self.buffer_size, self.n_envs) + _obs_shape, dtype=observation_space[key].dtype)
             for key, _obs_shape in self.obs_shape.items()

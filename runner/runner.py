@@ -5,6 +5,7 @@ import time
 import gym
 from torch.utils.tensorboard import SummaryWriter
 
+from runner.callbacks import LearnEndCallback
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, SubprocVecEnv
@@ -44,8 +45,8 @@ class IterRun:
     boost_step = 3* unit
     boosted = False
 
-    gradient_steps = 4
-    def __init__(self, MODEL, env_name, arc=[256, 128, 32], nproc=1):
+    gradient_steps = 2
+    def __init__(self, MODEL, env_name, arc=[256, 128, 32], nproc=2, init_boost=False, retrain=False, batch_size=128):
         self.env_name = env_name
         self.model_cls = MODEL
         self.name = MODEL.__name__
@@ -56,9 +57,18 @@ class IterRun:
         self.buffer = None
         self.arch = arc
         self.iter = 1
-        self.train_start = time.time ()
+
         self.time_recoder = TimeRecode(self.writer)
         self.nproc =nproc
+        self.batch_size = batch_size
+        if retrain:
+            pass
+        else:
+            if init_boost: self.init_boost()
+            else:
+                model = self._create()
+                model.save(self.save)
+                del model
 
     def make_env(self, nproc=1):
         if nproc <2:
@@ -79,7 +89,7 @@ class IterRun:
         minimum = -1e8
         suit_model =None
         for iter in range(1,3):
-            model = self._create(init=True, env=env)
+            model = self._create(env=env)
             self.train_start = time.time ()
             model.learn(total_timesteps= self.boost_step + iter*self.unit)
             eval = self.evaluation(model, test_env)
@@ -104,54 +114,50 @@ class IterRun:
         os.makedirs(dir, exist_ok=True)
         return SummaryWriter(dir)
 
-    def _create(self, init=False, env=None):
+    def _create(self, env=None, learning_starts = 100 ):
         policy_kwargs = dict(net_arch=self.arch)
         noise_std = 0.3
         noise = NormalActionNoise(
             mean=np.zeros(1), sigma=noise_std * np.ones(1)
         )
-
-        if init:
-            tensorboard_log =None
-            learning_starts =self.boost_step
-        else:
-            env = self.env
-            tensorboard_log = "./summary/"
-            learning_starts = 100
-
-        model = self.model_cls("MlpPolicy", env, verbose=1, action_noise=noise, gradient_steps= self.gradient_steps,
-                      policy_kwargs=policy_kwargs, tensorboard_log=tensorboard_log, learning_starts=learning_starts)
+        if env is None:env = self.env
+        model = self.model_cls("MlpPolicy", env, verbose=1, action_noise=noise,
+                               gradient_steps= self.gradient_steps *self.nproc,
+                               batch_size = self.batch_size, policy_kwargs=policy_kwargs,
+                               learning_starts=learning_starts)
         return model
+
+
 
     def train_eval(self, steps =None):
         self.time_recoder.start()
         if steps is None: steps = self.unit*3
-        try:
-            model = self.model_cls.load(self.save, env=self.env)
-            if self.buffer: model.replay_buffer = self.buffer
-            print("LOADED", self.save, self.iter)
-            print("BUFFER REUSE:", model.replay_buffer.size())
-        except:
-            if self.boosted: raise Exception("INIT ERROR")
-            model = self._create()
 
-        model.learn(total_timesteps=steps, tb_log_name=self.name)
+        model = self.model_cls.load(self.save, env=self.env)
+        if self.buffer: model.replay_buffer = self.buffer
+
+        print("LOADED", self.save, self.iter)
+        print("BUFFER REUSE:", model.replay_buffer.size() * self.nproc)
+
+        start_tm = time.time()
+        start_n = model._n_updates
+
+        CB = LearnEndCallback()
+        model.learn(total_timesteps=steps, tb_log_name=self.name, callback=CB)
         self.buffer = model.replay_buffer
-        fps = int(model._n_updates / (time.time()-self.train_start))
-        model.save(self.save)
 
+        print("===========   EVAL   =======   ", self.name, self.iter, ",FPS: ", CB.fps)
 
         train = {
-            "1_Actor_loss": model.last_log["train/actor_loss"],
-            "2_Critic_Loss": model.last_log["train/critic_loss"],
-            "3_Reward": model.last_log["rollout/ep_rew_mean"],
-            "4_FPS": fps}
+            "1_Actor_loss": CB.last_aloss,
+            "2_Critic_Loss": CB.last_closs,
+            "3_FPS": CB.fps}
 
-        print("===========   EVAL   =======   ",self.name, self.iter, ",FPS: ", fps)
         eval = self.evaluation(model, self.test_env)
         self.board("Eval", eval)
         self.board("Train",train)
         self.time_recoder.recode(eval)
+        model.save(self.save)
         del model
 
         self.iter += 1

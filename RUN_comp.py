@@ -2,7 +2,7 @@
 import gym
 from gym import register
 
-from runner import IterRun
+from runner.runner import IterRun
 from stable_baselines3 import DDPG, SAC,TD3
 
 # https://github.com/notadamking/RLTrader/issues/10
@@ -10,10 +10,8 @@ from stable_baselines3 import DDPG, SAC,TD3
 
 
 def compair_run(iter, env_name):
-    targets =[IterRun(TD3, env_name), IterRun(DDPG, env_name), IterRun(SAC, env_name)]
+    targets =[IterRun(TD3, env_name)]
 
-    for iter_run in targets:
-        iter_run.init_boost()
 
     print("======================================")
     print ("======================================")

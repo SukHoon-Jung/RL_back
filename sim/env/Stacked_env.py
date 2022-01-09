@@ -86,7 +86,7 @@ class StackedEnv(gym.Env):
         self.share_idx = self.full_feature_length
         print("full length", self.full_feature_length)
 
-        self.observation_space = spaces.Box(low=0, high=np.inf, shape = (self.full_feature_length + NUMBER_OF_STOCKS,))
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape = (self.full_feature_length + NUMBER_OF_STOCKS,))
         self.reset()
     def reset(self):
         """

@@ -86,7 +86,7 @@ class DictEnvTest2(gym.Env):
         self.action_space = spaces.Box(low = -1.0, high = 1.0,shape = (NUMBER_OF_STOCKS,),dtype=np.float16)
 
         # obs = spaces.Box(low = -np.inf, high = np.inf,shape = (2,feature_length),dtype=np.float16)
-        obs = spaces.Box(low=-np.inf, high=np.inf, shape=(2*feature_length + 3+NUMBER_OF_STOCKS,), dtype=np.float16)
+        obs = spaces.Box(low=0, high=np.inf, shape=(2*feature_length + 3+NUMBER_OF_STOCKS,))
         self.observation_space = obs
 
         self.reset()
@@ -118,7 +118,7 @@ class DictEnvTest2(gym.Env):
         self.day, self.data = self.skip_day(input_states, True)
         pre_day = self.day
         pre_data = self.data.values.tolist()
-        self.day, self.data = self.skip_day (input_states, True)
+        self.day, self.data = self.skip_day (input_states)
 
         self.timeline = [self.day]
 
@@ -316,7 +316,7 @@ class DictEnvTest2(gym.Env):
         self.timeline = np.append (self.timeline, self.day)
 
 
-        self.reward = self.cal_reward(total_asset_starting, total_asset_ending, cur_stat)
+        self.reward = self.cal_reward(total_asset_starting, total_asset_ending, new_stat)
 
 
         # self.reward = self.cal_opt_reward (pre_date, step_profit, pre_unrealized_pnl, pre_price, self.buy_price)

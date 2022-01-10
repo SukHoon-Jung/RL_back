@@ -41,7 +41,7 @@ class TimeRecode:
 
 
 
-ENV =DictEnvTest
+ENV =DictEnvTest2
 class IterRun:
 
     unit = 2050
@@ -129,7 +129,7 @@ class IterRun:
         #                        gradient_steps= self.gradient_steps *self.nproc,
         #                        batch_size = self.batch_size, policy_kwargs=policy_kwargs,
         #                        learning_starts=learning_starts)
-        model = self.model_cls("MultiInputPolicy", env, verbose=1, action_noise=noise,  #MultiInputPolicy
+        model = self.model_cls("MlpPolicy", env, verbose=1, action_noise=noise,  #MultiInputPolicy
                                gradient_steps= self.gradient_steps *self.nproc,
                                batch_size = self.batch_size, policy_kwargs=policy_kwargs,
                                learning_starts=learning_starts)

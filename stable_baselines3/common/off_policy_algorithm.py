@@ -81,7 +81,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
         policy_base: Type[BasePolicy],
         learning_rate: Union[float, Schedule],
         buffer_size: int = 1_000_000,  # 1e6
-        learning_starts: int = 100,
+        learning_starts: int = 0,
         batch_size: int = 256,
         tau: float = 0.005,
         gamma: float = 0.99,
@@ -350,7 +350,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
 
         callback.on_training_start(locals(), globals())
 
-        while self.num_timesteps < total_timesteps:
+        while self._episode_num < total_timesteps:
             rollout = self.collect_rollouts(
                 self.env,
                 train_freq=self.train_freq,
@@ -364,7 +364,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
             if rollout.continue_training is False:
                 break
 
-            if self.num_timesteps > 0 and self.num_timesteps > self.learning_starts:
+            if self._episode_num >= self.learning_starts:
                 # If no `gradient_steps` is specified,
                 # do as many gradients steps as steps performed during the rollout
                 gradient_steps = self.gradient_steps if self.gradient_steps >= 0 else rollout.episode_timesteps

@@ -10,8 +10,7 @@ from stable_baselines3 import DDPG, SAC,TD3
 
 
 def compair_run(iter):
-    targets =[IterRun(DDPG), IterRun(SAC), IterRun(TD3)]
-
+    targets =[IterRun(TD3)]
 
     print("======================================")
     print ("======================================")

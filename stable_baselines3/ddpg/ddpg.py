@@ -59,7 +59,7 @@ class DDPG(TD3):
         env: Union[GymEnv, str],
         learning_rate: Union[float, Schedule] = 1e-3,
         buffer_size: int = 100_000,  # 1e6
-        learning_starts: int = 100,
+        learning_starts: int = 0,
         batch_size: int = 128,
         tau: float = 0.005,
         gamma: float = 0.98,

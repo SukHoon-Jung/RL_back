@@ -87,7 +87,7 @@ class DictEnv2(gym.Env):
         self.action_space = spaces.Box(low = -1.0, high = 1.0,shape = (NUMBER_OF_STOCKS,),dtype=np.float16)
 
         # obs = spaces.Box(low = -np.inf, high = np.inf,shape = (2,feature_length),dtype=np.float16)
-        obs = spaces.Box(low=-np.inf, high=np.inf, shape=(2*feature_length,))
+        obs = spaces.Box(low=-np.inf, high=np.inf, shape=(2,feature_length,))
         stat = spaces.Box(low = -np.inf, high = np.inf,shape = (2+NUMBER_OF_STOCKS,))
         self.observation_space = spaces.Dict(OrderedDict([(OBS, obs), (STAT, stat)]))
 
@@ -129,7 +129,7 @@ class DictEnv2(gym.Env):
         self.reward = 0
 
         # obs = [self.data.values.tolist(), pre_data ]
-        obs = self.data.values.tolist()+ pre_data
+        obs = [self.data.values.tolist(), pre_data]
         stat = [unrealized_pnl] + [self.day_diff(pre_day, self.day)] + [0]
         self.state = OrderedDict([(OBS, obs), (STAT, stat)])
         return self.state
@@ -245,10 +245,8 @@ class DictEnv2(gym.Env):
     def step(self, actions):
         self.pre_day = self.day
         self.done = self.day >= END_TRAIN
-        if self.done:
-            return self.step_done(actions[0])
-        else:
-            return self.step_normal(actions[0])
+        if self.done: return self.step_done(actions[0])
+        else: return self.step_normal(actions[0])
 
 
     def _unrealized_profit(self, cur_buy_stat, buy_price, at=None):
@@ -280,7 +278,7 @@ class DictEnv2(gym.Env):
 
         unrealized_pnl = self._unrealized_profit(new_stat, self.buy_price)
 
-        obs = self.data.values.tolist() + pre_data
+        obs = [self.data.values.tolist(), pre_data]
         stat = [unrealized_pnl] + [self.day_diff(pre_day, self.day)] + [new_stat]
         self.state = OrderedDict([(OBS, obs), (STAT, stat)])
 
@@ -354,15 +352,11 @@ class DictEnv2(gym.Env):
 
     def render(self, mode='human'):
         if not self.plot_fig: return self.state
-
         self.plot_fig.update(iteration=self.iteration-1, idx=range(len(self.position_log)), pos=self.total_pos, neg= -self.total_neg,
                              cash=self.acc_balance, unreal=self.unrealized_asset, asset=self.total_asset,
                              reward=self.reward_log.cumsum(), position=self.position_log, unit=self.unit_log)
         return self.state
 
     def _seed(self, seed=None):
-        """
-        Seed the iteration.
-        """
         self.np_random, seed = seeding.np_random(seed)
         return [seed]

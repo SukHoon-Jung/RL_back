@@ -236,31 +236,58 @@ class FlattenExtractor(BaseFeaturesExtractor):
     def forward(self, observations: th.Tensor) -> th.Tensor:
         return self.flatten(observations)
 
-# class CombinedExtractor(BaseFeaturesExtractor):
-#     """
-#     Combined feature extractor for Dict observation spaces.
-#     Builds a feature extractor for each key of the space. Input from each space
-#     is fed through a separate submodule (CNN or MLP, depending on input shape),
-#     the output features are concatenated and fed through additional MLP network ("combined").
-# 
-#     :param observation_space:
-#     :param cnn_output_dim: Number of features to output from each CNN submodule(s). Defaults to
-#         256 to avoid exploding network sizes.
-#     """
-#     key ='obs'
-# 
-#     def __init__(self, observation_space: gym.spaces.Dict):
-#         # TODO we do not know features-dim here before going over all the items, so put something there. This is dirty!
-#         super(CombinedExtractor, self).__init__(observation_space,  get_flattened_obs_dim(observation_space.spaces[self.key]))
-#         self.flatten = nn.Flatten()
-# 
-# 
-#     def forward(self, observations: TensorDict) -> th.Tensor:
-#         return self.flatten(observations[self.key])
-# 
-
-
 class CombinedExtractor(BaseFeaturesExtractor):
+    """
+    Combined feature extractor for Dict observation spaces.
+    Builds a feature extractor for each key of the space. Input from each space
+    is fed through a separate submodule (CNN or MLP, depending on input shape),
+    the output features are concatenated and fed through additional MLP network ("combined").
+
+    :param observation_space:
+    :param cnn_output_dim: Number of features to output from each CNN submodule(s). Defaults to
+        256 to avoid exploding network sizes.
+    """
+
+    def __init__(self, observation_space: gym.spaces.Dict):
+        # TODO we do not know features-dim here before going over all the items, so put something there. This is dirty!
+        super(CombinedExtractor, self).__init__(observation_space, features_dim=1)
+
+        self.stat = nn.Flatten()
+        self.obs = nn.Flatten()
+        n_input_channels = observation_space['obs'].shape[0]
+        self.cnn = nn.Sequential(
+            nn.Conv2d(1, 3, kernel_size=(1,2), stride=1, padding=0),
+            nn.ReLU(),
+            nn.Flatten(),
+        )
+
+        with th.no_grad():
+            n_flatten = self.cnn(th.as_tensor(observation_space.sample()['obs']).float()).shape[1]
+        self.linear = nn.Sequential(nn.Linear(n_flatten, 20), nn.ReLU())
+
+
+
+
+        total_concat_size = 0
+        for key, subspace in observation_space.spaces.items():
+
+            # The observation key is a vector, flatten it if needed
+            extractors[key] = nn.Flatten()
+            total_concat_size += get_flattened_obs_dim(subspace)
+
+        self.extractors = nn.ModuleDict(extractors)
+
+        # Update the features dim manually
+        self._features_dim = total_concat_size
+
+    def forward(self, observations: TensorDict) -> th.Tensor:
+        encoded_tensor_list = []
+
+        for key, extractor in self.extractors.items():
+            encoded_tensor_list.append(extractor(observations[key]))
+        return th.cat(encoded_tensor_list, dim=1)
+
+class CombinedExtractor22(BaseFeaturesExtractor):
     """
     Combined feature extractor for Dict observation spaces.
     Builds a feature extractor for each key of the space. Input from each space

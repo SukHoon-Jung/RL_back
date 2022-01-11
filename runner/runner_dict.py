@@ -24,7 +24,8 @@ ENV = DictEnv2
 class IterRun:
     MIN_TRADE = 30
     BOOST_SEARCH = 3
-    unit = 2050
+    unit_episode = 1
+    train_epi = unit_episode * 1
     gradient_steps = 2
     def __init__(self, MODEL, arc=[256, 128, 32], nproc=1, retrain=False, batch_size=128, seed=None):
         self.seed = seed
@@ -37,7 +38,6 @@ class IterRun:
         self.buffer = None
         self.arch = arc
         self.iter = 1
-
 
         self.time_recoder = TimeRecode(self.writer)
         self.nproc =nproc
@@ -59,9 +59,9 @@ class IterRun:
 
     def unit_model(self):
         env = self.make_env()
-        model = self._create(env=env, learning_starts=self.unit)
+        model = self._create(env=env, learning_starts=self.unit_episode)
         self.train_start = time.time()
-        learn_steps = self.unit * 2
+        learn_steps = self.unit_episode * 2
         model.learn(total_timesteps=learn_steps)
         model.learning_starts = 0
         return model
@@ -99,6 +99,7 @@ class IterRun:
         self.seed = model.seed
         self.buffer = suit_model.replay_buffer
         suit_model.save(self.save)
+        print(suit_model.policy)
 
         del suit_model
 
@@ -119,11 +120,11 @@ class IterRun:
 
 
 
-    def train_eval(self, steps =None):
+    def train_eval(self, traing_epi = None):
 
         self.time_recoder.start()
         self.seed = np.random.randint (1e8)
-        steps = steps or self.unit*1
+        traing_epi = traing_epi or self.train_epi
         model = self.model_cls.load(self.save, env=self.env)
         model.replay_buffer = self.buffer
         model.set_random_seed (self.seed)
@@ -133,7 +134,7 @@ class IterRun:
         print("BUFFER REUSE:", model.replay_buffer.size() * self.nproc)
 
         CB = LearnEndCallback()
-        model.learn(total_timesteps=steps, tb_log_name=self.name, callback=CB)
+        model.learn(total_timesteps=traing_epi, tb_log_name=self.name, callback=CB)
         self.buffer = model.replay_buffer
 
         print("===========   EVAL   =======   ", self.name, self.iter, ",FPS: ", CB.fps)

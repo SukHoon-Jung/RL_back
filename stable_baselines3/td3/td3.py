@@ -66,7 +66,7 @@ class TD3(OffPolicyAlgorithm):
         env: Union[GymEnv, str],
         learning_rate: Union[float, Schedule] = 1e-3,
         buffer_size: int = 100_000,  # 1e6
-        learning_starts: int = 100,
+        learning_starts: int = 1,
         batch_size: int = 128,
         tau: float = 0.005,
         gamma: float = 0.98,
@@ -87,7 +87,6 @@ class TD3(OffPolicyAlgorithm):
         device: Union[th.device, str] = "auto",
         _init_setup_model: bool = True,
     ):
-
         super(TD3, self).__init__(
             policy,
             env,

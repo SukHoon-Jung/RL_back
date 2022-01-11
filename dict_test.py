@@ -1,27 +1,57 @@
 import gym
+from gym.wrappers import FlattenObservation
 
-from sim.env.Dict_env import DictEnv
-from stable_baselines3 import TD3
+from runner.callbacks import LearnEndCallback
+from sim.env.Dict_envtest import DictEnvTest
+import numpy as np
+from stable_baselines3 import DDPG, SAC,TD3
 from stable_baselines3.common.vec_env import VecNormalize, DummyVecEnv
 
 
-def run():
+def consistency(model_class=TD3):
+    """
+    Make sure that dict obs with vector only vs using flatten obs is equivalent.
+    This ensures notable that the network architectures are the same.
+    """
+    dict_env = DictEnvTest()
+    env = FlattenObservation(DictEnvTest())
 
-    env = DummyVecEnv([lambda :DictEnv()])
-    env = VecNormalize(env, norm_obs_keys=["obs"])
+    dict_env =VecNormalize(DummyVecEnv([lambda : DictEnvTest()]), norm_obs_keys=["obs"])
+    env =VecNormalize(DummyVecEnv([lambda :FlattenObservation(DictEnvTest())]))
 
+    dict_env.seed(10)
+    n_steps = 5
     kwargs = dict(
-        policy_kwargs=dict(
-            net_arch=[32],
-            features_extractor_kwargs=dict(cnn_output_dim=32),
-        ),
-        gradient_steps=2,
+        buffer_size=20000,
+        gradient_steps=1,
+        batch_size =2
     )
+    CB1 = LearnEndCallback()
+    CB2 = LearnEndCallback()
+    dict_model = model_class("MultiInputPolicy", dict_env, gamma=0.99, seed=1,  **kwargs)
+    dict_model.learn(total_timesteps=n_steps, callback = CB1,)
+
+    print("=============")
+
+    normal_model = model_class("MlpPolicy", env, gamma=0.99, seed=1, **kwargs)
+    normal_model.learn(total_timesteps=n_steps, callback = CB2,)
+
+    print(CB1.last_aloss, CB2.last_aloss)
+    print(CB1.last_closs, CB2.last_closs)
+    #
+    print(dict_env.obs_rms['obs'].mean - env.obs_rms.mean)
+    print(dict_env.obs_rms['obs'].var - env.obs_rms.var)
 
 
-    model = TD3("MultiInputPolicy"  , env, seed=1, **kwargs)
+    obs = dict_env.reset()
+    for i in range(100):
+        action_1, _ = dict_model.predict(obs)
+        action_2, _ = normal_model.predict(obs["obs"])
+        print(action_1, "\t", action_2)
+        obs, reward, done, info  = dict_env.step(action_1)
 
-    model.learn(total_timesteps=7000)
+
 
 if __name__ == '__main__':
-    run()
+
+    consistency()

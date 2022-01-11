@@ -48,11 +48,11 @@ class IterRun:
     boosted = False
 
     gradient_steps = 2
-    def __init__(self, MODEL, arc=[256, 128, 32], nproc=2, init_boost=False, retrain=False, batch_size=128):
+    def __init__(self, MODEL, arc=[256, 128, 32], nproc=1, init_boost=False, retrain=False, batch_size=128):
 
         self.model_cls = MODEL
         self.name = MODEL.__name__
-        self.test_env = DummyVecEnv([lambda: ENV(title=self.name, plot_dir="./sFig/{}".format(self.name))])
+        self.test_env =  ENV(title=self.name, plot_dir="./sFig/{}".format(self.name))
         self.env = self.make_env()
         self.writer = self.tensorboard("./summary_all/{}/".format(self.name))
         self.save = f"ckpt_{self.name}"
@@ -75,13 +75,13 @@ class IterRun:
 
     def make_env(self):
         env =  DummyVecEnv([lambda: ENV()])
-        return VecNormalize(env, norm_obs_keys=["obs"], norm_obs=True, norm_reward=True, clip_obs=10.)
+        return VecNormalize(env, norm_obs_keys=["obs"])
 
     def init_boost(self, min_profit=-500):
         print("-----  BOOST UP", self.name)
 
         env = self.make_env(self.nproc)
-        test_env =  DummyVecEnv([lambda: gym.make(self.env_name)])
+        test_env =  ENV(())
 
         minimum = -1e8
         suit_model =None
@@ -105,11 +105,7 @@ class IterRun:
         del suit_model
 
 
-    def tensorboard(self, dir):
 
-        shutil.rmtree(dir, ignore_errors=True)
-        os.makedirs(dir, exist_ok=True)
-        return SummaryWriter(dir)
 
     def _create(self, env=None, learning_starts = 100 ):
         policy_kwargs = dict(net_arch=self.arch)
@@ -127,6 +123,8 @@ class IterRun:
 
 
     def train_eval(self, steps =None):
+        np.random.seed(122)
+        self.env.seed(self.iter)
         self.time_recoder.start()
         if steps is None: steps = self.unit*3
 
@@ -142,6 +140,7 @@ class IterRun:
         CB = LearnEndCallback()
         model.learn(total_timesteps=steps, tb_log_name=self.name, callback=CB)
         self.buffer = model.replay_buffer
+        print(self.buffer)
 
         print("===========   EVAL   =======   ", self.name, self.iter, ",FPS: ", CB.fps)
 
@@ -159,29 +158,32 @@ class IterRun:
 
         self.iter += 1
 
+
+    def tensorboard(self, dir):
+        shutil.rmtree(dir, ignore_errors=True)
+        os.makedirs(dir, exist_ok=True)
+        return SummaryWriter(dir)
+
     def board(self, prefix, dict):
         for key, val in dict.items():
             self.writer.add_scalar(prefix + "/" + key, val, self.iter)
 
     def evaluation(self, model, env = None):
         if not env: env = self.test_env
-        train_evn = model.get_env()
-        obs = env.reset()
-        obs = train_evn.normalize_obs(obs)
 
-        print(train_evn.obs_rms['obs'].mean)
-        print(train_evn.obs_rms['obs'].var)
-        print(obs)
+        print(self.env)
+        obs = env.reset()
         done = False
         rewards = []
         while not done:
+            obs = self.env.normalize_obs(obs)
             action, _states = model.predict(obs)
             obs, reward, done, info = env.step(action)
-            obs = train_evn.normalize_obs (obs)
-            done = done[0]
-            rewards.append(reward[0])
 
-        info = info[0]
+            done = done
+            rewards.append(reward)
+
+        info = info
 
         rslt = {
             "1_Reward": sum(rewards),

@@ -102,7 +102,7 @@ def test_consistency(model_class):
     """
     use_discrete_actions = model_class == DQN
     dict_env = DummyDictEnv(use_discrete_actions=use_discrete_actions, vec_only=True)
-    dict_env = gym.wrappers.TimeLimit(dict_env, 100)
+    dict_env = gym.wrappers.TimeLimit(dict_env, 1000)
     env = gym.wrappers.FlattenObservation(dict_env)
     dict_env.seed(10)
     obs = dict_env.reset()

@@ -79,7 +79,7 @@ class IterRun:
             model = self.unit_model()
             eval = self.evaluation(model, test_env)
             reward = eval["1_Reward"]
-            count = eval['5_Trade']
+            count = eval['4_Trade']
             if (max_cont < count):
                 max_cont = count
                 bad_model = model

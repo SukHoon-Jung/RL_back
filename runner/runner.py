@@ -11,6 +11,7 @@ from sim.env.Dict_envtest import DictEnvTest
 from sim.env.Dict_envtest2 import DictEnvTest2
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.noise import NormalActionNoise
+from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, SubprocVecEnv
 import numpy as np
 
@@ -125,11 +126,8 @@ class IterRun:
             mean=np.zeros(1), sigma=noise_std * np.ones(1)
         )
         if env is None:env = self.env
-        # model = self.model_cls("MlpPolicy", env, verbose=1, action_noise=noise,  #MultiInputPolicy
-        #                        gradient_steps= self.gradient_steps *self.nproc,
-        #                        batch_size = self.batch_size, policy_kwargs=policy_kwargs,
-        #                        learning_starts=learning_starts)
-        model = self.model_cls("MlpPolicy", env, verbose=1, action_noise=noise,  #MultiInputPolicy
+        self.seed = 12020948#np.random.randint (1e8)
+        model = self.model_cls("MlpPolicy", env, verbose=1, action_noise=noise, seed = self.seed,
                                gradient_steps= self.gradient_steps *self.nproc,
                                batch_size = self.batch_size, policy_kwargs=policy_kwargs,
                                learning_starts=learning_starts)
@@ -139,16 +137,17 @@ class IterRun:
 
     def train_eval(self, steps =None):
         self.time_recoder.start()
-        if steps is None: steps = self.unit*3
-
+        if steps is None: steps = self.unit*1
+        self.seed = np.random.randint(1e8)
         model = self.model_cls.load(self.save, env=self.env)
-        if self.buffer: model.replay_buffer = self.buffer
+        model.set_random_seed (self.seed)
+        print(self.seed)
 
-        print("LOADED", self.save, self.iter)
+
+        if self.buffer: model.replay_buffer = self.buffer
+        print("LOADED", self.save, self.iter, "SEED ", model.seed)
         print("BUFFER REUSE:", model.replay_buffer.size() * self.nproc)
 
-        start_tm = time.time()
-        start_n = model._n_updates
 
         CB = LearnEndCallback()
         model.learn(total_timesteps=steps, tb_log_name=self.name, callback=CB)

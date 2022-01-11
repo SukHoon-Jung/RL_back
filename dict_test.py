@@ -20,11 +20,11 @@ def consistency(model_class=TD3):
     env =VecNormalize(DummyVecEnv([lambda :FlattenObservation(DictEnvTest())]))
 
     dict_env.seed(10)
-    n_steps = 500
+    n_steps = 5
     kwargs = dict(
         buffer_size=20000,
-        gradient_steps=1282,
-        batch_size =2
+        gradient_steps=2,
+        batch_size =128
     )
     CB1 = LearnEndCallback()
     CB2 = LearnEndCallback()

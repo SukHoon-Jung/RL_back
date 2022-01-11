@@ -69,10 +69,7 @@ class IterRun:
             pass
         else:
             if init_boost: self.init_boost()
-            else:
-                model = self._create()
-                model.save(self.save)
-                del model
+            else: self.init_boost (-10_000)
 
     def make_env(self):
         env =  DummyVecEnv([lambda: ENV(verbose=False)])
@@ -96,7 +93,10 @@ class IterRun:
             eval = self.evaluation(model, test_env)
             reward = eval["1_Reward"]
             count = eval['5_Trade']
+            iter_cnt += 1
             if count < self.MIN_TRADE:
+                
+                print (" - - - - - BOOST FAIL: ", self.name, reward, count)
                 continue
 
             print(" - - - - - BOOST PROFIT: ", self.name, reward)
@@ -105,9 +105,7 @@ class IterRun:
                 suit_model = model
 
             if reward > min_reward:
-
                 break
-            iter_cnt += 1
             if iter_cnt > self.BOOST_SEARCH: break
 
         print (" - - - - - BOOST Selected: ", self.name, minimum, "Seed:", self.seed)
@@ -141,6 +139,7 @@ class IterRun:
         if steps is None: steps = self.unit*3
 
         model = self.model_cls.load(self.save, env=self.env)
+        print(model.seed)
         if self.buffer: model.replay_buffer = self.buffer
 
         # print("LOADED", self.save, self.iter)
@@ -152,7 +151,6 @@ class IterRun:
         CB = LearnEndCallback()
         model.learn(total_timesteps=steps, tb_log_name=self.name, callback=CB)
         self.buffer = model.replay_buffer
-        print(self.buffer)
 
         print("===========   EVAL   =======   ", self.name, self.iter, ",FPS: ", CB.fps)
 

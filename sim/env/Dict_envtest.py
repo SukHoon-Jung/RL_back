@@ -85,13 +85,9 @@ class DictEnvTest(gym.Env):
         # defined using Gym's Box action space function
         self.action_space = spaces.Box(low = -1.0, high = 1.0,shape = (NUMBER_OF_STOCKS,),dtype=np.float16)
 
-
-
-
-
-        obs = spaces.Box(low=np.inf, high=np.inf, shape=(2 * feature_length + 3 + NUMBER_OF_STOCKS,))
-        self.observation_space = spaces.Dict({OBS: obs})
-        # self.observation_space = obs
+        # obs = spaces.Box(low = -np.inf, high = np.inf,shape = (2,feature_length),dtype=np.float16)
+        obs = spaces.Box (low=np.inf, high=np.inf, shape=(2 * feature_length + 3 + NUMBER_OF_STOCKS,))
+        self.observation_space = spaces.Dict ({OBS: obs})
 
         self.reset()
     def reset(self):
@@ -130,10 +126,9 @@ class DictEnvTest(gym.Env):
         self.iteration += 1
         self.reward = 0
 
-
-        obs =  self.acc_balance + [unrealized_pnl] +self.data.values.tolist()+ pre_data+ [self.day_diff(pre_day, self.day)] + [0]
-        self.state = OrderedDict([(OBS, obs)])
-        # self.state = obs
+        # obs = [self.data.values.tolist(), pre_data ]
+        obs = self.data.values.tolist () + pre_data + self.acc_balance + [unrealized_pnl] + [self.day_diff (pre_day, self.day)] + [0]
+        self.state = OrderedDict ([(OBS, obs)])
         return self.state
 
     def day_diff(self, pre, now):
@@ -283,16 +278,13 @@ class DictEnvTest(gym.Env):
 
         pre_price = self.buy_price
 
-        balance = self.state[OBS][0]
-        pre_unrealized_pnl =self.state[OBS][1]
+        # Total asset is account balance + unrealized_pnl
+        balance = self.state[OBS][-4]
+        pre_unrealized_pnl = self.state[OBS][-3]
         pre_stat = self.state[OBS][-1]
 
-        # balance = self.state[0]
-        # pre_unrealized_pnl =self.state[1]
-        # cur_stat = self.state[-1]
 
         total_asset_starting = balance + pre_unrealized_pnl
-
 
         new_stat, gain = self._trade (pre_stat, action)
         new_bal =balance + gain
@@ -305,24 +297,18 @@ class DictEnvTest(gym.Env):
 
         unrealized_pnl = self._unrealized_profit(new_stat, self.buy_price)
 
-        obs =  [new_bal] + [unrealized_pnl] +self.data.values.tolist() + pre_data+ [self.day_diff(pre_day, self.day)] + [new_stat]
+        # obs = [self.data.values.tolist(), pre_data]
+        obs = self.data.values.tolist () + pre_data + [new_bal] + [unrealized_pnl] + [self.day_diff (pre_day, self.day)] + [new_stat]
         # self.state = obs
-        self.state = OrderedDict([(OBS, obs)])
+        self.state = OrderedDict ([(OBS, obs)])
+
+
 
         total_asset_ending = new_bal + unrealized_pnl
         step_profit = total_asset_ending - total_asset_starting
 
         # print(step_profit, unrealized_pnl)
 
-
-
-
-        self.reward = self.cal_reward(total_asset_starting, total_asset_ending, new_stat)
-        # self.reward = self.cal_opt_reward (pre_date, step_profit, pre_unrealized_pnl, pre_price, self.buy_price)
-        # self.reward = self.cal_simple_reward(total_asset_starting, total_asset_ending)
-
-        optimal = self.cal_opt_reward(pre_day, step_profit, pre_unrealized_pnl, pre_price, self.buy_price)
-        self.reward += (max(optimal,-2)/2)
 
         if step_profit <0: self.total_neg = np.append(self.total_neg, step_profit)
         else: self.total_pos = np.append(self.total_pos, step_profit)
@@ -333,6 +319,16 @@ class DictEnvTest(gym.Env):
 
         self.total_asset = np.append (self.total_asset, total_asset_ending)
         self.timeline = np.append (self.timeline, self.day)
+
+
+        self.reward = self.cal_reward(total_asset_starting, total_asset_ending, new_stat)
+
+
+        # self.reward = self.cal_opt_reward (pre_date, step_profit, pre_unrealized_pnl, pre_price, self.buy_price)
+        # self.reward = self.cal_simple_reward(total_asset_starting, total_asset_ending)
+
+        optimal = self.cal_opt_reward(pre_day, step_profit, pre_unrealized_pnl, pre_price, self.buy_price)
+        self.reward += (max(optimal,-2)/2)
 
         self.reward_log = np.append (self.reward_log, self.reward)
         return self.state, self.reward, self.done, {}

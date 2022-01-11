@@ -73,7 +73,7 @@ OBS ="obs"
 class DictEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, day = START_TRAIN, title="Star", plot_dir=None):
+    def __init__(self, day = START_TRAIN, title="Star", verbose = True, plot_dir=None):
         self.plot_fig = None if not plot_dir else EpisodePlot(title, plot_dir)
         if NUMBER_OF_STOCKS !=1:
             raise Exception("NEED SINGLE TARGET")
@@ -81,6 +81,7 @@ class DictEnv(gym.Env):
         Initializing the trading environment, trading parameters starting values are defined.
         """
         self.iteration = 0
+        self.verbose = verbose
 
         # defined using Gym's Box action space function
         self.action_space = spaces.Box(low = -1.0, high = 1.0,shape = (NUMBER_OF_STOCKS,),dtype=np.float16)
@@ -243,15 +244,16 @@ class DictEnv(gym.Env):
     def step_done(self, actions):
         self.step_normal(0)
 
-        print ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        print ("Iteration", self.iteration - 1)
+       
 
         total_neg = np.sum(self.total_neg)
-        print("UP: {}, DOWN: {}, Commition: {}".format(self.up_cnt, self.down_cnt, self.total_commition))
-        print("Acc: {}, Rwd: {}, Neg: {}".format(self.total_asset[-1], sum(self.reward_log),total_neg))
-
-        risk_log = -1 * total_neg/ np.sum(self.total_pos)
-        self.render()
+        risk_log = -1 * total_neg / np.sum (self.total_pos)
+        if self.verbose: 
+            print ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+            print ("Iteration", self.iteration - 1)
+            print("UP: {}, DOWN: {}, Commition: {}".format(self.up_cnt, self.down_cnt, self.total_commition))
+            print("Acc: {}, Rwd: {}, Neg: {}".format(self.total_asset[-1], sum(self.reward_log),total_neg))
+            self.render()
         return self.state, self.reward, self.done, {'profit': self.total_asset[-1],
                                                     'risk':risk_log, 'neg': total_neg,
                                                     'cnt':self.down_cnt+self.up_cnt}

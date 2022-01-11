@@ -17,6 +17,7 @@ import numpy as np
 # <class 'stable_baselines3.td3.policies.TD3Policy'>
 # <class 'stable_baselines3.sac.policies.SACPolicy'>
 class TimeRecode:
+
     def __init__(self, writer, interval=2):
         self.total_sec=0
         self.tick = 0
@@ -42,14 +43,15 @@ class TimeRecode:
 
 ENV = DictEnv
 class IterRun:
-
+    MIN_TRADE = 100
+    BOOST_SEARCH = 3
     unit = 2050
     boost_step = 3* unit
     boosted = False
 
     gradient_steps = 2
-    def __init__(self, MODEL, arc=[256, 128, 32], nproc=1, init_boost=False, retrain=False, batch_size=128):
-
+    def __init__(self, MODEL, arc=[256, 128, 32], nproc=1, init_boost=True, retrain=False, batch_size=128, seed=None):
+        self.seed = seed
         self.model_cls = MODEL
         self.name = MODEL.__name__
         self.test_env =  ENV(title=self.name, plot_dir="./sFig/{}".format(self.name))
@@ -69,35 +71,46 @@ class IterRun:
             if init_boost: self.init_boost()
             else:
                 model = self._create()
-                print(model.policy)
                 model.save(self.save)
                 del model
 
     def make_env(self):
-        env =  DummyVecEnv([lambda: ENV()])
-        return VecNormalize(env, norm_obs_keys=["obs"])
+        env =  DummyVecEnv([lambda: ENV(verbose=False)])
+        return VecNormalize(env, norm_obs_keys=["obs", "stat"])
 
-    def init_boost(self, min_profit=-500):
+    def init_boost(self, min_reward=-500):
         print("-----  BOOST UP", self.name)
-
-        env = self.make_env(self.nproc)
+        env = self.make_env()
         test_env =  ENV(())
 
         minimum = -1e8
-        suit_model =None
-        for iter in range(1,3):
+        suit_model = None
+
+        iter_cnt = 0
+        while True:
+            self.seed = np.random.randint(100000)
             model = self._create(env=env)
+
             self.train_start = time.time ()
-            model.learn(total_timesteps= self.boost_step + iter*self.unit)
+            model.learn(total_timesteps= self.boost_step + iter_cnt*self.unit)
             eval = self.evaluation(model, test_env)
-            profit = eval["1_Reward"]
+            reward = eval["1_Reward"]
+            count = eval['5_Trade']
+            if count < self.MIN_TRADE:
+                continue
 
-            print(" - - - - - BOOST PROFIT: ", self.name, profit)
-            if (minimum < profit):
-                minimum = profit
+            print(" - - - - - BOOST PROFIT: ", self.name, reward)
+            if (minimum < reward):
+                minimum = reward
                 suit_model = model
-            if profit > min_profit: break
 
+            if reward > min_reward:
+
+                break
+            iter_cnt += 1
+            if iter_cnt > self.BOOST_SEARCH: break
+
+        print (" - - - - - BOOST Selected: ", self.name, minimum, "Seed:", self.seed)
         self.buffer = suit_model.replay_buffer
         suit_model.learning_starts = 0
         suit_model.save(self.save)
@@ -114,7 +127,7 @@ class IterRun:
             mean=np.zeros(1), sigma=noise_std * np.ones(1)
         )
         if env is None:env = self.env
-        model = self.model_cls("MultiInputPolicy", env, verbose=1, action_noise=noise,
+        model = self.model_cls("MultiInputPolicy", env, verbose=1, action_noise=noise,seed = self.seed,
                                gradient_steps= self.gradient_steps,
                                batch_size = self.batch_size, policy_kwargs=policy_kwargs,
                                learning_starts=learning_starts)
@@ -123,8 +136,7 @@ class IterRun:
 
 
     def train_eval(self, steps =None):
-        np.random.seed(122)
-        self.env.seed(self.iter)
+
         self.time_recoder.start()
         if steps is None: steps = self.unit*3
 

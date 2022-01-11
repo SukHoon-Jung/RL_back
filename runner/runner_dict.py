@@ -40,7 +40,7 @@ class TimeRecode:
 
 
 
-ENV = DictEnvTest
+ENV = DictEnv
 class IterRun:
 
     unit = 2050

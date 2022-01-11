@@ -20,10 +20,10 @@ def consistency(model_class=TD3):
     env =VecNormalize(DummyVecEnv([lambda :FlattenObservation(DictEnvTest())]))
 
     dict_env.seed(10)
-    n_steps = 5
+    n_steps = 500
     kwargs = dict(
         buffer_size=20000,
-        gradient_steps=1,
+        gradient_steps=1282,
         batch_size =2
     )
     CB1 = LearnEndCallback()
@@ -31,16 +31,14 @@ def consistency(model_class=TD3):
     dict_model = model_class("MultiInputPolicy", dict_env, gamma=0.99, seed=1,  **kwargs)
     dict_model.learn(total_timesteps=n_steps, callback = CB1,)
 
-    print("=============")
+
 
     normal_model = model_class("MlpPolicy", env, gamma=0.99, seed=1, **kwargs)
     normal_model.learn(total_timesteps=n_steps, callback = CB2,)
 
     print(CB1.last_aloss, CB2.last_aloss)
     print(CB1.last_closs, CB2.last_closs)
-    #
-    print(dict_env.obs_rms['obs'].mean - env.obs_rms.mean)
-    print(dict_env.obs_rms['obs'].var - env.obs_rms.var)
+
 
 
     obs = dict_env.reset()

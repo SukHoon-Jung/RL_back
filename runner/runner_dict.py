@@ -20,7 +20,7 @@ import numpy as np
 # <class 'stable_baselines3.sac.policies.SACPolicy'>
 
 
-ENV = DictEnv2
+ENV = DictEnv
 class IterRun:
     MIN_TRADE = 30
     BOOST_SEARCH = 3

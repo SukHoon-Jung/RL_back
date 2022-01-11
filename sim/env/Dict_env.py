@@ -244,11 +244,11 @@ class DictEnv(gym.Env):
     def step_done(self, actions):
         self.step_normal(0)
 
-       
+
 
         total_neg = np.sum(self.total_neg)
         risk_log = -1 * total_neg / np.sum (self.total_pos)
-        if self.verbose: 
+        if self.verbose:
             print ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
             print ("Iteration", self.iteration - 1)
             print("UP: {}, DOWN: {}, Commition: {}".format(self.up_cnt, self.down_cnt, self.total_commition))

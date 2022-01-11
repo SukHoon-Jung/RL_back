@@ -86,9 +86,9 @@ class DictEnv(gym.Env):
         self.action_space = spaces.Box(low = -1.0, high = 1.0,shape = (NUMBER_OF_STOCKS,),dtype=np.float16)
 
         # obs = spaces.Box(low = -np.inf, high = np.inf,shape = (2,feature_length),dtype=np.float16)
-        obs = spaces.Box(low=-np.inf, high=np.inf, shape=(2*feature_length,), dtype=np.float16)
-        stat = spaces.Box(low = -np.inf, high = np.inf,shape = (3+NUMBER_OF_STOCKS,),dtype=np.float16)
-        self.observation_space = spaces.Dict({OBS: obs,STAT:stat})
+        obs = spaces.Box(low=-np.inf, high=np.inf, shape=(2*feature_length,))
+        stat = spaces.Box(low = -np.inf, high = np.inf,shape = (3+NUMBER_OF_STOCKS,))
+        self.observation_space = spaces.Dict(OrderedDict([(OBS, obs), (STAT, stat)]))
 
         self.reset()
     def reset(self):
@@ -119,7 +119,7 @@ class DictEnv(gym.Env):
         self.day, self.data = self.skip_day(input_states, True)
         pre_day = self.day
         pre_data = self.data.values.tolist()
-        self.day, self.data = self.skip_day (input_states, True)
+        self.day, self.data = self.skip_day (input_states)
 
         self.timeline = [self.day]
 
@@ -283,11 +283,13 @@ class DictEnv(gym.Env):
         # Total asset is account balance + unrealized_pnl
         balance = self.state[STAT][0]
         pre_unrealized_pnl =self.state[STAT][1]
+        pre_stat = self.state[STAT][-1]
+
 
         total_asset_starting = balance + pre_unrealized_pnl
-        cur_stat = self.state[STAT][-1]
 
-        new_stat, gain = self._trade (cur_stat, action)
+
+        new_stat, gain = self._trade (pre_stat, action)
         new_bal =balance + gain
 
         self.position_log = np.append (self.position_log, new_stat)
@@ -320,7 +322,7 @@ class DictEnv(gym.Env):
         self.timeline = np.append (self.timeline, self.day)
 
 
-        self.reward = self.cal_reward(total_asset_starting, total_asset_ending, cur_stat)
+        self.reward = self.cal_reward(total_asset_starting, total_asset_ending, new_stat)
 
 
         # self.reward = self.cal_opt_reward (pre_date, step_profit, pre_unrealized_pnl, pre_price, self.buy_price)

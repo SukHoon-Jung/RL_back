@@ -73,7 +73,7 @@ OBS ="obs"
 class DictEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, day = START_TRAIN, title="Star", verbose = True, plot_dir=None):
+    def __init__(self, day = START_TRAIN, title="Star", verbose = False, plot_dir=None):
         self.plot_fig = None if not plot_dir else EpisodePlot(title, plot_dir)
         if NUMBER_OF_STOCKS !=1:
             raise Exception("NEED SINGLE TARGET")
@@ -106,7 +106,7 @@ class DictEnv(gym.Env):
         self.total_commition = 0
         self.unit_log =[0]
         self.acc_balance = [STARTING_ACC_BALANCE]
-        self.total_asset = self.acc_balance
+        self.total_asset = self.acc_balance.copy()
         self.reward_log = [0]
         self.position = 0
         self.position_log = [self.position ]
@@ -245,11 +245,10 @@ class DictEnv(gym.Env):
         self.step_normal(0)
 
 
-
         total_neg = np.sum(self.total_neg)
         risk_log = -1 * total_neg / np.sum (self.total_pos)
+        print("---------------------------", self.iteration - 1 )
         if self.verbose:
-            print ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
             print ("Iteration", self.iteration - 1)
             print("UP: {}, DOWN: {}, Commition: {}".format(self.up_cnt, self.down_cnt, self.total_commition))
             print("Acc: {}, Rwd: {}, Neg: {}".format(self.total_asset[-1], sum(self.reward_log),total_neg))

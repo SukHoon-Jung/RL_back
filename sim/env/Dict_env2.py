@@ -70,10 +70,10 @@ COST = SLIPPAGE+COMMITION
 obs_range=(-5., 5.)
 STAT = "stat"
 OBS ="obs"
-class DictEnvTest2(gym.Env):
+class DictEnv2(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, day = START_TRAIN, title="Star", plot_dir=None):
+    def __init__(self, title="Star", verbose = False, plot_dir=None):
         self.plot_fig = None if not plot_dir else EpisodePlot(title, plot_dir)
         if NUMBER_OF_STOCKS !=1:
             raise Exception("NEED SINGLE TARGET")
@@ -81,13 +81,15 @@ class DictEnvTest2(gym.Env):
         Initializing the trading environment, trading parameters starting values are defined.
         """
         self.iteration = 0
+        self.verbose = verbose
 
         # defined using Gym's Box action space function
         self.action_space = spaces.Box(low = -1.0, high = 1.0,shape = (NUMBER_OF_STOCKS,),dtype=np.float16)
 
         # obs = spaces.Box(low = -np.inf, high = np.inf,shape = (2,feature_length),dtype=np.float16)
-        obs = spaces.Box(low=0, high=np.inf, shape=(2*feature_length + 3+NUMBER_OF_STOCKS,))
-        self.observation_space = obs
+        obs = spaces.Box(low=-np.inf, high=np.inf, shape=(2*feature_length,))
+        stat = spaces.Box(low = -np.inf, high = np.inf,shape = (2+NUMBER_OF_STOCKS,))
+        self.observation_space = spaces.Dict(OrderedDict([(OBS, obs), (STAT, stat)]))
 
         self.reset()
     def reset(self):
@@ -104,10 +106,10 @@ class DictEnvTest2(gym.Env):
         self.total_commition = 0
         self.unit_log =[0]
         self.acc_balance = [STARTING_ACC_BALANCE]
-        self.total_asset = self.acc_balance
+        self.total_asset = self.acc_balance.copy()
         self.reward_log = [0]
         self.position = 0
-        self.position_log = [self.position ]
+        self.position_log = [self.position]
 
         unrealized_pnl = 0.0
         self.unrealized_asset = [unrealized_pnl]
@@ -126,10 +128,10 @@ class DictEnvTest2(gym.Env):
         self.iteration += 1
         self.reward = 0
 
-
-        obs =  self.acc_balance + [unrealized_pnl] +self.data.values.tolist()+ pre_data+ [self.day_diff(pre_day, self.day)] + [0]
-
-        self.state = obs
+        # obs = [self.data.values.tolist(), pre_data ]
+        obs = self.data.values.tolist()+ pre_data
+        stat = [unrealized_pnl] + [self.day_diff(pre_day, self.day)] + [0]
+        self.state = OrderedDict([(OBS, obs), (STAT, stat)])
         return self.state
 
     def day_diff(self, pre, now):
@@ -209,11 +211,7 @@ class DictEnvTest2(gym.Env):
 
     def _trade(self, cur_share, action):
         new_share = self.get_trade_num(action ,MAX_TRADE)
-
         cleaned, profit, cost, _, buy_price = self.__trade(self.buy_price, cur_share, new_share)
-
-        # print(">>>>>>>>>>>>>>",cur_share, new_share, profit-cost )
-
         cleaned = abs(cleaned)
         thresold = abs (cleaned) * COMMITION
         if profit > thresold:
@@ -227,30 +225,17 @@ class DictEnvTest2(gym.Env):
 
         return new_share, (profit - cost)
 
-    def log_trade (self):
-        trading_book = pd.DataFrame (index=self.timeline, columns=["Cash balance", "Unrealized value", "Total asset", "Rewards", "CumReward", "Position"])
-        trading_book["Cash balance"] = self.acc_balance
-        trading_book["Unrealized value"] = self.unrealized_asset
-        trading_book["Total asset"] = self.total_asset
-        trading_book["Rewards"] = self.reward_log
-        trading_book["CumReward"] = trading_book["Rewards"].cumsum().fillna(0)
-        trading_book["Position"]  = self.position_log
-        trading_book["Unit"] = self.unit_log
-
-        trading_book.to_csv ('./train_result/trading_book_train_{}.csv'.format (self.iteration - 1))
-
     def step_done(self, actions):
         self.step_normal(0)
 
-        print ("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        print ("Iteration", self.iteration - 1)
-
         total_neg = np.sum(self.total_neg)
-        print("UP: {}, DOWN: {}, Commition: {}".format(self.up_cnt, self.down_cnt, self.total_commition))
-        print("Acc: {}, Rwd: {}, Neg: {}".format(self.total_asset[-1], sum(self.reward_log),total_neg))
-
-        risk_log = -1 * total_neg/ np.sum(self.total_pos)
-        self.render()
+        risk_log = -1 * total_neg / np.sum (self.total_pos)
+        print("---------------------------", self.iteration - 1 )
+        if self.verbose:
+            print ("Iteration", self.iteration - 1)
+            print("UP: {}, DOWN: {}, Commition: {}".format(self.up_cnt, self.down_cnt, self.total_commition))
+            print("Acc: {}, Rwd: {}, Neg: {}".format(self.total_asset[-1], sum(self.reward_log),total_neg))
+            self.render()
         return self.state, self.reward, self.done, {'profit': self.total_asset[-1],
                                                     'risk':risk_log, 'neg': total_neg,
                                                     'cnt':self.down_cnt+self.up_cnt}
@@ -259,7 +244,6 @@ class DictEnvTest2(gym.Env):
 
     def step(self, actions):
         self.pre_day = self.day
-
         self.done = self.day >= END_TRAIN
         if self.done:
             return self.step_done(actions[0])
@@ -278,18 +262,17 @@ class DictEnvTest2(gym.Env):
     def step_normal(self, action):
 
         pre_price = self.buy_price
-
-        # Total asset is account balance + unrealized_pnl
-        balance = self.state[0]
-        pre_unrealized_pnl =self.state[1]
+        balance = self.acc_balance[-1]
+        pre_unrealized_pnl =self.state[STAT][0]
+        pre_stat = self.state[STAT][-1]
 
         total_asset_starting = balance + pre_unrealized_pnl
-        cur_stat = self.state[-1]
 
-        new_stat, gain = self._trade (cur_stat, action)
-        new_bal =balance + gain
-
+        new_stat, gain = self._trade (pre_stat, action)
+        new_bal = balance + gain
+        self.acc_balance = np.append(self.acc_balance, new_bal)
         self.position_log = np.append (self.position_log, new_stat)
+
         #NEXT DAY
         pre_day = self.day
         pre_data = self.data.values.tolist()
@@ -297,8 +280,10 @@ class DictEnvTest2(gym.Env):
 
         unrealized_pnl = self._unrealized_profit(new_stat, self.buy_price)
 
-        obs =  [new_bal] + [unrealized_pnl] +self.data.values.tolist() + pre_data+ [self.day_diff(pre_day, self.day)] + [new_stat]
-        self.state =obs
+        obs = self.data.values.tolist() + pre_data
+        stat = [unrealized_pnl] + [self.day_diff(pre_day, self.day)] + [new_stat]
+        self.state = OrderedDict([(OBS, obs), (STAT, stat)])
+
         total_asset_ending = new_bal + unrealized_pnl
         step_profit = total_asset_ending - total_asset_starting
 
@@ -309,27 +294,32 @@ class DictEnvTest2(gym.Env):
         else: self.total_pos = np.append(self.total_pos, step_profit)
 
         self.unit_log = np.append(self.unit_log, step_profit)
-        self.acc_balance = np.append (self.acc_balance, new_bal)
+
         self.unrealized_asset = np.append (self.unrealized_asset, unrealized_pnl)
 
         self.total_asset = np.append (self.total_asset, total_asset_ending)
         self.timeline = np.append (self.timeline, self.day)
 
 
-        self.reward = self.cal_reward(total_asset_starting, total_asset_ending, new_stat)
+        self.reward = self.cal_reward(new_stat, pre_day, step_profit, pre_unrealized_pnl, pre_price, self.buy_price)
 
 
-        # self.reward = self.cal_opt_reward (pre_date, step_profit, pre_unrealized_pnl, pre_price, self.buy_price)
-        # self.reward = self.cal_simple_reward(total_asset_starting, total_asset_ending)
-
-        optimal = self.cal_opt_reward(pre_day, step_profit, pre_unrealized_pnl, pre_price, self.buy_price)
-        self.reward += (max(optimal,-2)/2)
-
-        self.reward_log = np.append (self.reward_log, self.reward)
         return self.state, self.reward, self.done, {}
 
-    def remain_risk(self, action_power):
-        return 0.01 * (pow(action_power + 1, 2) -1)
+
+    def cal_reward(self,new_stat, pre_day, step_profit, pre_unrealized_pnl, pre_price, buy_price):
+        returns = self.cal_emph_reward(step_profit)
+        risk = self.remain_risk(new_stat)
+        optimal = self.cal_opt_reward(pre_day, step_profit, pre_unrealized_pnl, pre_price, buy_price)
+        reward = returns + 0.01*risk
+        reward += (max(optimal, -2) / 2)
+        self.reward_log = np.append(self.reward_log,reward)
+        return reward
+
+
+    def remain_risk(self, cur_buy_stat):
+        action_power = abs(cur_buy_stat / MAX_TRADE)
+        return  pow(action_power + 1, 2) -1
 
     def get_optimal(self, base_date, base_share, base_unreal, base_price, next_price):
         check_trade = [-MAX_TRADE, 0, MAX_TRADE]
@@ -342,9 +332,6 @@ class DictEnvTest2(gym.Env):
             unreal = self._unrealized_profit (target, next_price)
             profit_sum += unreal
 
-            # print ("           >", base_share, target, profit_sum)
-            # print(unreal - base_unreal )
-
             optimal = max(profit_sum, optimal)
 
         return optimal - base_unreal
@@ -354,25 +341,14 @@ class DictEnvTest2(gym.Env):
         reward = (profit - opt)
         return reward
 
-    def cal_simple_reward(self, total_asset_starting, total_asset_ending):
 
-        profit = (total_asset_ending - total_asset_starting)/ MAX_TRADE
-        return profit
-
-
-    def cal_reward(self, total_asset_starting, total_asset_ending, cur_buy_stat):
-
-        action_power = np.mean(abs(cur_buy_stat/ MAX_TRADE))
-        profit = (total_asset_ending - total_asset_starting)/ MAX_TRADE
-        risk = self.remain_risk(action_power)
-        profit = (profit - risk)
-
+    def cal_emph_reward(self,profit):
+        profit = profit/ MAX_TRADE
         if profit<0:
             profit = min(profit, -1 * pow(abs(profit), 1.5))
         else:
             profit = max(profit, pow(profit, 1.2))
         return profit
-
         return reward
 
 

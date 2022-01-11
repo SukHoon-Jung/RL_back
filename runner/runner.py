@@ -126,7 +126,7 @@ class IterRun:
             mean=np.zeros(1), sigma=noise_std * np.ones(1)
         )
         if env is None:env = self.env
-        self.seed = 12020948#np.random.randint (1e8)
+        self.seed = 12020948 #np.random.randint (1e8)
         model = self.model_cls("MlpPolicy", env, verbose=1, action_noise=noise, seed = self.seed,
                                gradient_steps= self.gradient_steps *self.nproc,
                                batch_size = self.batch_size, policy_kwargs=policy_kwargs,

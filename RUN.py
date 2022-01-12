@@ -1,3 +1,4 @@
+import os
 import sys
 
 import gym
@@ -6,12 +7,12 @@ from gym import register
 from runner.runner_dict import IterRun
 from stable_baselines3 import DDPG, SAC,TD3
 import numpy as np
-
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 # https://github.com/notadamking/RLTrader/issues/10
 
 
 
-def compair_run(iter):
+def compair_run(iter, model):
     noise_set = np.linspace(0.05, 0.5,5)
     nis_start = 10
 
@@ -32,6 +33,6 @@ def compair_run(iter):
 if __name__ == '__main__':
     model = sys.argv[-1]
     print(model)
-    compair_run(1000, model)
+    compair_run(1000, model.strip())
 
 

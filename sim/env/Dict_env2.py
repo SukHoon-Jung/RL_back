@@ -13,6 +13,7 @@ import math
 
 # ------------------------- GLOBAL PARAMETERS -------------------------
 # Start and end period of historical data in question
+from sim.CONFIG import *
 from sim.epi_plot import EpisodePlot
 
 START_TRAIN = datetime(2008, 12, 31)
@@ -62,14 +63,7 @@ except :
 feature_length = len(input_states.columns)
 data_length = len(input_states)
 
-COMMITION = 0.2
-SLIPPAGE = 1#1  # 상방 하방
-COST = SLIPPAGE+COMMITION
 
-# ------------------------------ CLASSES ---------------------------------
-obs_range=(-5., 5.)
-STAT = "stat"
-OBS ="obs"
 class DictEnv2(gym.Env):
     metadata = {'render.modes': ['human']}
 

@@ -12,7 +12,7 @@ import numpy as np
 
 def compair_run(iter):
     noise_set = np.linspace(0.05, 0.5,5)
-    nis_start = 2
+    nis_start = 1
 
     targets =[IterRun(TD3)]#, IterRun(DDPG), IterRun(SAC)]
 
@@ -20,7 +20,7 @@ def compair_run(iter):
     print ("======================================")
     print ("======================================")
     for i in range(1, iter):
-        noise = None if i <=nis_start else noise_set[len(noise_set)%(i-nis_start)]
+        noise = None if i <nis_start else noise_set[(i-nis_start) % len(noise_set)]
         for iter_run in targets:
             iter_run.train_eval(noise=noise)
 

@@ -23,11 +23,12 @@ import numpy as np
 ENV = DictEnv2
 class IterRun:
     MIN_TRADE = 30
-    BOOST_SEARCH = 3
+    BOOST_SEARCH = 2
     unit_episode = 1
     train_epi = unit_episode * 1
     gradient_steps = 2
-    def __init__(self, MODEL, arc=[256, 128, 32], nproc=1, retrain=False, batch_size=128, seed=None):
+    noise_std = 0.5
+    def __init__(self, MODEL, arc=[256, 64], nproc=1, retrain=False, batch_size=128, seed=None):
         self.seed = seed
         self.model_cls = MODEL
         self.name = MODEL.__name__
@@ -106,9 +107,9 @@ class IterRun:
 
     def _create(self, env=None, learning_starts = 100):
         policy_kwargs = dict(net_arch=self.arch)
-        noise_std = 0.3
+
         noise = NormalActionNoise(
-            mean=np.zeros(1), sigma=noise_std * np.ones(1)
+            mean=np.zeros(1), sigma=self.noise_std * np.ones(1)
         )
         if env is None:env = self.env
         seed = self.seed or np.random.randint(1e8)
@@ -118,9 +119,12 @@ class IterRun:
                                learning_starts=learning_starts)
         return model
 
+    def reset_noise(self, model, noise):
+        if noise is None: return
+        model.action_noise.sigma=noise * np.ones(1)
+        print("Noise Reset:", noise)
 
-
-    def train_eval(self, traing_epi = None):
+    def train_eval(self, traing_epi = None, noise=None):
 
         self.time_recoder.start()
         self.seed = np.random.randint (1e8)
@@ -128,7 +132,8 @@ class IterRun:
         model = self.model_cls.load(self.save, env=self.env)
         model.replay_buffer = self.buffer
         model.set_random_seed (self.seed)
-        print (self.seed)
+        self.reset_noise(model, noise)
+
 
         print("LOADED", self.save, self.iter, model.seed)
         print("BUFFER REUSE:", model.replay_buffer.size() * self.nproc)

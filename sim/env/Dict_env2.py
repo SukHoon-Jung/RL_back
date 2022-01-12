@@ -349,7 +349,7 @@ class DictEnv2(gym.Env):
         else:
             profit = max(profit, pow(profit, 1.2))
         return profit
-        return reward
+
 
 
     def render(self, mode='human'):

@@ -4,23 +4,25 @@ from gym import register
 
 from runner.runner_dict import IterRun
 from stable_baselines3 import DDPG, SAC,TD3
+import numpy as np
 
 # https://github.com/notadamking/RLTrader/issues/10
 
 
 
 def compair_run(iter):
-    targets =[IterRun(TD3)]
+    noise_set = np.linspace(0.05, 0.5,5)
+    nis_start = 2
+
+    targets =[IterRun(TD3)]#, IterRun(DDPG), IterRun(SAC)]
 
     print("======================================")
     print ("======================================")
     print ("======================================")
-    print ("======================================")
-    print ("======================================")
-
-    for i in range(iter):
+    for i in range(1, iter):
+        noise = None if i <=nis_start else noise_set[len(noise_set)%(i-nis_start)]
         for iter_run in targets:
-            iter_run.train_eval()
+            iter_run.train_eval(noise=noise)
 
 
 

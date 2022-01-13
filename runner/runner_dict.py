@@ -2,33 +2,26 @@ import os
 import shutil
 import time
 
-import gym
 from torch.utils.tensorboard import SummaryWriter
-
 from runner.callbacks import LearnEndCallback
-from sim.env.Dict_env import DictEnv
-from sim.env.Dict_env2 import DictEnv2
-from sim.env.Dict_envtest import DictEnvTest
-from stable_baselines3.common.env_util import make_vec_env
+
+from sim.env.Dict_env3 import DictEnv3
 from stable_baselines3.common.noise import NormalActionNoise
-from stable_baselines3.common.utils import set_random_seed
+
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize, SubprocVecEnv
 import numpy as np
 
 
-# <class 'stable_baselines3.td3.policies.TD3Policy'>
-# <class 'stable_baselines3.sac.policies.SACPolicy'>
-
-
-ENV = DictEnv2
+ENV = DictEnv3
 class IterRun:
     MIN_TRADE = 30
     BOOST_SEARCH = 5
     unit_episode = 1
     train_epi = unit_episode * 1
-    gradient_steps = 2
+    train_iter = 2
     noise_std = 0.5
-    def __init__(self, MODEL, arc=[256, 128, 32], nproc=1, retrain=False, batch_size=128, seed=None):
+    seq = 5
+    def __init__(self, MODEL, arc=[128, 32], nproc=1, retrain=False, batch_size=128, seed=None):
         self.seed = seed
         self.model_cls = MODEL
         self.name = MODEL.__name__
@@ -39,7 +32,6 @@ class IterRun:
         self.buffer = None
         self.arch = arc
         self.iter = 1
-
         self.time_recoder = TimeRecode(self.writer)
         self.nproc =nproc
         self.batch_size = batch_size
@@ -73,17 +65,17 @@ class IterRun:
         test_env = ENV(verbose=False)
         minimum = -1e8
         suit_model = None
-        bad_model = None
+
         max_cont = -1e8
 
         for iter in range(self.BOOST_SEARCH):
             model = self.unit_model()
+            if iter == 0: print (model.policy)
             eval = self.evaluation(model, test_env)
             reward = eval["1_Reward"]
             count = eval['4_Trade']
-            if (max_cont < count):
-                max_cont = count
-                bad_model = model
+            if (max_cont < count): max_cont = count
+
             if count < MIN_TRADE:
                 print (" - - - - - BOOST FAIL: ", self.name, reward, " by Count:", count)
                 continue
@@ -93,14 +85,15 @@ class IterRun:
                 suit_model = model
             if reward > min_reward: break
         if suit_model is None:
-            suit_model = bad_model
+            suit_model = self.unit_model()
             print(" - - - - - BOOST Selection Failed: ", self.name, "Bad Model Count", max_cont)
 
-        print (" - - - - - BOOST Selected: ", self.name, minimum, "Seed:", model.seed)
-        self.seed = model.seed
-        self.buffer = suit_model.replay_buffer
+        else:
+            print (" - - - - - BOOST Selected: ", self.name, minimum, "Seed:", model.seed)
+            self.seed = model.seed
+            self.buffer = suit_model.replay_buffer
+
         suit_model.save(self.save)
-        print(suit_model.policy)
 
         del suit_model
 
@@ -114,26 +107,28 @@ class IterRun:
         if env is None:env = self.env
         seed = self.seed or np.random.randint(1e8)
         model = self.model_cls("MultiInputPolicy", env, verbose=1, action_noise=noise, seed =seed,
-                               gradient_steps= self.gradient_steps,
-                               batch_size = self.batch_size, policy_kwargs=policy_kwargs,
+                               gradient_steps= 1,
+                               batch_size = self.batch_size, policy_kwargs=policy_kwargs, buffer_size=500_000,
                                learning_starts=learning_starts)
         return model
 
-    def reset_noise(self, model, noise):
-        if noise is None: return
-        model.action_noise.sigma=noise * np.ones(1)
-        print("Noise Reset:", noise)
+    def load_model(self, noise):
+
+        model = self.model_cls.load (self.save, env=self.env)
+        if self.buffer: model.replay_buffer = self.buffer
+        model.set_random_seed (self.seed)
+        model.gradient_steps = self.train_iter
+        if noise is not None:
+            model.action_noise.sigma=noise * np.ones(1)
+            print("Noise Reset:", noise)
+        return model
 
     def train_eval(self, traing_epi = None, noise=None):
 
         self.time_recoder.start()
         self.seed = np.random.randint (1e8)
         traing_epi = traing_epi or self.train_epi
-        model = self.model_cls.load(self.save, env=self.env)
-        model.replay_buffer = self.buffer
-        model.set_random_seed (self.seed)
-        self.reset_noise(model, noise)
-
+        model = self.load_model(noise)
 
         print("LOADED", self.save, self.iter, model.seed)
         print("BUFFER REUSE:", model.replay_buffer.size() * self.nproc)
@@ -143,12 +138,10 @@ class IterRun:
         self.buffer = model.replay_buffer
 
         print("===========   EVAL   =======   ", self.name, self.iter, ",FPS: ", CB.fps)
-
         train = {
             "1_Actor_loss": CB.last_aloss,
             "2_Critic_Loss": CB.last_closs,
             "3_FPS": CB.fps}
-
         eval = self.evaluation(model, self.test_env)
         self.board("Eval", eval)
         self.board("Train",train)
@@ -178,18 +171,16 @@ class IterRun:
             obs = self.env.normalize_obs(obs)
             action, _states = model.predict(obs)
             obs, reward, done, info = env.step(action)
-
             done = done
             rewards.append(reward)
 
         info = info
-
         rslt = {
             "1_Reward": sum(rewards),
             "2_Profit": info['profit'],
             "3_Risk": info['risk'],
             "4_Trade": info['cnt'],
-            "5_Perform": info['profit']/info['cnt'],
+            "5_Perform": max(0, min(10, info['profit']/info['cnt'])),
         }
 
         return rslt
@@ -216,6 +207,5 @@ class TimeRecode:
             for key, val in dict.items():
                 self.writer.add_scalar("TvIME" + "/" + key, val, now * self.interval)
             self.tick = now + 1
-
         return True
 

@@ -304,7 +304,7 @@ class DictEnv2(gym.Env):
         risk = self.remain_risk(new_stat)
         optimal = self.cal_opt_reward(pre_day, step_profit, pre_unrealized_pnl, pre_price, buy_price)
         reward = returns + 0.01*risk
-        reward += (max(optimal, -2) / 2)
+        reward += (max(optimal, -5))
         self.reward_log = np.append(self.reward_log,reward)
         return reward
 

@@ -23,12 +23,12 @@ import numpy as np
 ENV = DictEnv2
 class IterRun:
     MIN_TRADE = 30
-    BOOST_SEARCH = 2
+    BOOST_SEARCH = 5
     unit_episode = 1
     train_epi = unit_episode * 1
     gradient_steps = 2
     noise_std = 0.5
-    def __init__(self, MODEL, arc=[256, 64], nproc=1, retrain=False, batch_size=128, seed=None):
+    def __init__(self, MODEL, arc=[256, 128, 32], nproc=1, retrain=False, batch_size=128, seed=None):
         self.seed = seed
         self.model_cls = MODEL
         self.name = MODEL.__name__

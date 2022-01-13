@@ -11,7 +11,7 @@ import numpy as np
 
 
 def compair_run(iter):
-    noise_set = np.linspace(0.05, 0.5,5)
+    noise_set = np.linspace(0.05, 0.4,5)
     nis_start = 1
 
     targets =[IterRun(TD3)]#, IterRun(DDPG), IterRun(SAC)]

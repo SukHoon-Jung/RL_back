@@ -25,8 +25,8 @@ class FlushPipe(object):
         self.capture_output.start()
 
     def get_output_for_processing(self):
-        line = self.process_output.get()
-        print (self.model,"\t\t\t",line.lstrip())
+        line = str(self.process_output.get())
+        if self.model in line: print (line.lstrip())
 
 
 if __name__ == "__main__":

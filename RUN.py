@@ -11,15 +11,15 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 # https://github.com/notadamking/RLTrader/issues/10
 
 
+names = {"TD3": TD3, "DDPG":DDPG, "SAC":SAC}
+def compair_run(iter, model=None):
+    noise_set = np.linspace(0.05, 0.6,5)
+    nis_start = 5
 
-def compair_run(iter, model):
-    noise_set = np.linspace(0.05, 0.5,5)
-    nis_start = 10
+    if model not in names:targets =[IterRun(TD3)]#, IterRun(DDPG), IterRun(SAC)]
+    else: targets = [IterRun(names[model])]
 
-    if model =="TD3": targets =[IterRun(TD3)]
-    elif model =="DDPG": targets =[IterRun(DDPG)]
-    elif model =="SAC": targets =[IterRun(SAC)]
-    else: pass
+
     print("======================================")
     print ("======================================")
     print ("======================================")
@@ -31,7 +31,7 @@ def compair_run(iter, model):
 
 
 if __name__ == '__main__':
-    model = sys.argv[-1]
+    model = sys.argv[-1].strip()
     print(model)
     compair_run(1000, model.strip())
 

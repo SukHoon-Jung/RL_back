@@ -41,13 +41,12 @@ except :
         context_df = dataset.get_feature_dataframe (CONTEXT_DATA)
         input_states = pd.concat([context_df, input_states], axis=1)
     input_states = input_states.dropna()
-    input_states['time'] = input_states.index.to_series().diff().dt.days
-    input_states['time'].fillna(0)
+
     input_states.to_csv(INPUT_FILE)
     WORLD = dataset.components_df_o[DJI]
     WORLD.to_csv(PRICE_FILE)
 
-print(input_states.head(10))
+print(input_states.head(3))
 
 # Without context data
 #input_states = feature_df

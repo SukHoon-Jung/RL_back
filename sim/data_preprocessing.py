@@ -53,7 +53,7 @@ END_TEST = datetime(2019, 2, 22)
 DJI = ['MMM']
 DJI_N = ['3M','American Express', 'Apple','Boeing','Caterpillar']
 
-CONTEXT_DATA = ['^GSPC', '^DJI', '^IXIC', '^RUT', 'SPY', 'QQQ', '^VIX', 'GLD', '^TYX', '^TNX' , 'SHY', 'SHV']
+CONTEXT_DATA = ['^GSPC', '^VIX' ]
 CONTEXT_DATA_N = ['S&P 500', 'Dow Jones Industrial Average', 'NASDAQ Composite', 'Russell 2000', 'SPDR S&P 500 ETF',
  'Invesco QQQ Trust', 'CBOE Volatility Index', 'SPDR Gold Shares', 'Treasury Yield 30 Years',
  'CBOE Interest Rate 10 Year T Note', 'iShares 1-3 Year Treasury Bond ETF', 'iShares Short Treasury Bond ETF']

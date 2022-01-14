@@ -279,7 +279,7 @@ class LstmLast(nn.Module):
 
 
 class SeqCRNN (BaseFeaturesExtractor):
-    ch1 = 3
+    ch1 = 5
     def __init__(self, observation_space: gym.spaces.Box, span=3, outdim: int = 128):
         super (SeqCRNN, self).__init__ (observation_space, features_dim=outdim)
         seq_len = observation_space.shape[0]
@@ -322,7 +322,7 @@ class SeqLstm (BaseFeaturesExtractor):
 class SeqFeature(BaseFeaturesExtractor):
     def __init__(self, obs_space: gym.spaces.Box):
         super (SeqFeature, self).__init__ (obs_space, features_dim=1)
-        extractors =[ SeqCRNN(obs_space), SeqLstm(obs_space)]
+        extractors =[ SeqCRNN(obs_space), SeqLast(obs_space)]
         total_concat_size = 0
         for ex in extractors:
             total_concat_size += ex._features_dim
@@ -347,7 +347,7 @@ class CombinedExtractor(BaseFeaturesExtractor):
 
         for key, subspace in observation_space.spaces.items():
             if key ==OBS:
-                extractors[OBS] =SeqLstm(subspace) # SeqFeature(subspace)
+                extractors[OBS] =SeqFeature(subspace) # SeqFeature(subspace)
                 total_concat_size += extractors[OBS]._features_dim
 
             elif key == STAT:

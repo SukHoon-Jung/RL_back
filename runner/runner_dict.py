@@ -18,10 +18,10 @@ class IterRun:
     BOOST_SEARCH = 5
     unit_episode = 1
     train_epi = unit_episode * 1
-    train_iter = 2
+    grad_steps =[(1e4, 2), (1e5,3), (3e5, 4)]
     noise_std = 0.5
     seq = 5
-    def __init__(self, MODEL, arc=[128, 32], nproc=1, retrain=False, batch_size=128, seed=None):
+    def __init__(self, MODEL, arc=[128, 64], nproc=1, retrain=False, batch_size=128, seed=None):
         self.seed = seed
         self.model_cls = MODEL
         self.name = MODEL.__name__
@@ -67,6 +67,7 @@ class IterRun:
         suit_model = None
 
         max_cont = -1e8
+        bad_model = None
 
         for iter in range(self.BOOST_SEARCH):
             model = self.unit_model()
@@ -74,7 +75,9 @@ class IterRun:
             eval = self.evaluation(model, test_env)
             reward = eval["1_Reward"]
             count = eval['4_Trade']
-            if (max_cont < count): max_cont = count
+            if (max_cont < count):
+                max_cont = count
+                bad_model = model
 
             if count < MIN_TRADE:
                 print (" - - - - - BOOST FAIL: ", self.name, reward, " by Count:", count)
@@ -85,7 +88,7 @@ class IterRun:
                 suit_model = model
             if reward > min_reward: break
         if suit_model is None:
-            suit_model = self.unit_model()
+            suit_model = bad_model
             print(" - - - - - BOOST Selection Failed: ", self.name, "Bad Model Count", max_cont)
 
         else:
@@ -117,10 +120,18 @@ class IterRun:
         model = self.model_cls.load (self.save, env=self.env)
         if self.buffer: model.replay_buffer = self.buffer
         model.set_random_seed (self.seed)
-        model.gradient_steps = self.train_iter
+        for grad_on_epi in self.grad_steps:
+            if grad_on_epi[0] < model.replay_buffer.size():
+                model.gradient_steps = grad_on_epi[1]
+            else: break
+
+
+        print("LOADED", self.save, self.iter, model.seed)
+        print(self.name, "BUFFER REUSE:", model.replay_buffer.size())
         if noise is not None:
             model.action_noise.sigma=noise * np.ones(1)
             print("Noise Reset:", noise)
+
         return model
 
     def train_eval(self, traing_epi = None, noise=None):
@@ -130,8 +141,6 @@ class IterRun:
         traing_epi = traing_epi or self.train_epi
         model = self.load_model(noise)
 
-        print("LOADED", self.save, self.iter, model.seed)
-        print("BUFFER REUSE:", model.replay_buffer.size() * self.nproc)
 
         CB = LearnEndCallback()
         model.learn(total_timesteps=traing_epi, tb_log_name=self.name, callback=CB)

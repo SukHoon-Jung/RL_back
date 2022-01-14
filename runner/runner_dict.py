@@ -130,7 +130,7 @@ class IterRun:
         print(self.name, "BUFFER REUSE:", model.replay_buffer.size())
         if noise is not None:
             model.action_noise.sigma=noise * np.ones(1)
-            print("Noise Reset:", noise)
+            print(self.name,"Noise Reset:", noise)
 
         return model
 
